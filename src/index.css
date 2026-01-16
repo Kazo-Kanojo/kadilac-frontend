@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+
+body {
+  background-color: #f3f4f6; /* Fundo cinza bem clarinho para destacar o branco */
+}
