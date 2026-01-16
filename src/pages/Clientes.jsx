@@ -1,207 +1,205 @@
 import React, { useState } from 'react';
-import { Search, Filter, Phone, User, Building2, MapPin, Briefcase } from 'lucide-react';
+import { 
+  Search, Plus, Edit, Briefcase, Phone, Printer, 
+  MapPin, Mail, ChevronDown, User, FileText, DollarSign 
+} from 'lucide-react';
 
-// 1. Mock Data (Dados fictícios baseados no seu print)
+// --- DADOS FAKES (MOCK) ---
 const MOCK_CLIENTS = [
-  { id: 1, type: 'F', name: 'ELISANDRA PIRES MENDES', phone: '(11) 9639-5415', clientType: 'Vendedor', email: 'elisandra@email.com', doc: '123.456.789-00', birthDate: '1985-04-12', address: { street: 'Rua das Flores, 123', district: 'Centro', city: 'São Paulo', state: 'SP', zip: '01001-000' }, job: { company: 'Autônomo', role: 'Vendas' } },
-  { id: 2, type: 'F', name: 'ABIMAEL MIRANDA DE CAMARGO', phone: '(11) 7549-3570', clientType: 'Vendedor', email: 'abimael@email.com', doc: '222.333.444-55', birthDate: '1990-05-20', address: { street: 'Av. Paulista, 1000', district: 'Bela Vista', city: 'São Paulo', state: 'SP', zip: '01310-100' }, job: { company: '', role: '' } },
-  { id: 3, type: 'J', name: 'ADAUTO CARDOSO DE ANDRADE', phone: '(11) 7176-1409', clientType: 'Comprador', email: 'adauto@empresa.com', doc: '12.345.678/0001-90', birthDate: '1980-01-15', address: { street: 'Rua Lirio do Amazonas, 160', district: 'Haras Bela Vista', city: 'Vargem Grande Paulista', state: 'SP', zip: '06730-000' }, job: { company: 'Logística SA', role: 'Gerente' } },
+  { id: 1, nome: 'Enesio Fagundes', telefone: '(11) 98877-6655', email: 'enesio@email.com', cidade: 'Ibiúna, SP', status: 'Ativo', tipo: 'Comprador' },
+  { id: 2, nome: 'Mariana Silva', telefone: '(11) 99988-7766', email: 'mariana@email.com', cidade: 'São Roque, SP', status: 'Interessado', tipo: 'Visitante' },
+  { id: 3, nome: 'Carlos Oliveira', telefone: '(15) 97766-5544', email: 'carlos.o@email.com', cidade: 'Sorocaba, SP', status: 'Inativo', tipo: 'Vendedor' },
+  { id: 4, nome: 'Fernanda Souza', telefone: '(11) 91234-5678', email: 'fer.souza@email.com', cidade: 'Cotia, SP', status: 'Ativo', tipo: 'Comprador' },
+  { id: 5, nome: 'Roberto Mendes', telefone: '(11) 98765-4321', email: 'roberto@email.com', cidade: 'Ibiúna, SP', status: 'Bloqueado', tipo: 'Comprador' },
 ];
 
-const ClientModule = () => {
-  const [selectedClient, setSelectedClient] = useState(MOCK_CLIENTS[0]);
-  const [searchTerm, setSearchTerm] = useState('');
+const Clientes = () => {
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [activeTab, setActiveTab] = useState('dados'); 
+
+  // Função auxiliar para manter o estilo dos botões secundários igual ao do <select> do Estoque
+  const ActionButton = ({ icon: Icon, label, onClick, primary = false }) => (
+    <button 
+      onClick={onClick}
+      className={`
+        flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors border
+        ${primary 
+          ? 'bg-kadilac-300 text-white border-kadilac-300 hover:bg-kadilac-400' // Estilo igual ao "+ Novo Carro"
+          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' // Estilo neutro para os outros
+        }
+      `}
+    >
+      <Icon size={16} />
+      <span className="uppercase text-xs font-bold tracking-wide">{label}</span>
+    </button>
+  );
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 text-slate-800 font-sans">
+    <div className="flex flex-col h-full gap-4 animate-fade-in">
       
-      {/* --- HEADER / TOOLBAR --- */}
-      <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-xl font-bold text-slate-700 flex items-center gap-2">
-            <User className="w-6 h-6 text-blue-600" />
-            Lista de Clientes
-          </h1>
-          
-          <div className="flex flex-1 items-center gap-2 max-w-3xl">
-            {/* Barra de Busca */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Buscar por nome, CPF/CNPJ..." 
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            {/* Filtros (Dropdowns simulados) */}
-            <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
-              <option>Pessoas Físicas e Jurídicas</option>
-              <option>Apenas Pessoa Física</option>
-              <option>Apenas Pessoa Jurídica</option>
-            </select>
-            
-            <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
-              <option>Todos os tipos de cliente</option>
-              <option>Vendedor</option>
-              <option>Comprador</option>
-            </select>
-          </div>
-          
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
-              + Novo Cliente
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* --- MAIN CONTENT (Split View) --- */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* --- BARRA DE TOPO (IGUAL AO ESTOQUE/VENDAS) --- */}
+      <div className="bg-white p-4 rounded shadow-sm flex flex-wrap gap-4 justify-between items-center">
         
-        {/* LADO ESQUERDO / TOPO: Lista de Clientes (Table) */}
-        {/* Nota: No print antigo era Topo/Baixo. Aqui podemos fazer lado a lado se a tela for larga, ou manter Topo/Baixo. 
-            Vou manter Topo/Baixo para ser fiel ao modelo mental do usuário antigo, mas responsivo. */}
-        <div className="flex flex-col w-full h-full">
+        {/* Lado Esquerdo: Busca (Idêntico ao Estoque) */}
+        <div className="flex items-center gap-2 border rounded px-3 py-2 bg-gray-50 flex-1 max-w-md">
+          <Search size={18} className="text-gray-400" />
+          <input 
+            type="text" 
+            placeholder="Buscar por nome, CPF..." 
+            className="bg-transparent outline-none text-sm w-full text-gray-600 placeholder-gray-400" 
+          />
+        </div>
+
+        {/* Lado Direito: Botões de Ação */}
+        <div className="flex gap-2 flex-wrap">
+           <ActionButton icon={Plus} label="Inclui" primary={true} onClick={() => alert('Incluir')} />
+           <ActionButton icon={Edit} label="Altera" onClick={() => alert('Alterar')} />
+           <ActionButton icon={Briefcase} label="Negócios" onClick={() => alert('Negócios')} />
+           <ActionButton icon={Phone} label="Telefonar" onClick={() => alert('Telefonar')} />
+           <ActionButton icon={Printer} label="Etiqueta" onClick={() => alert('Etiqueta')} />
+        </div>
+      </div>
+
+      {/* --- LISTA DE CLIENTES (TABELA - Estilo Consistente) --- */}
+      <div className="bg-white rounded shadow-sm overflow-auto flex-1 border border-gray-200">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-gray-100 text-gray-600 sticky top-0 font-semibold z-10 shadow-sm">
+            <tr>
+              <th className="p-3 pl-6 border-b w-16">ID</th>
+              <th className="p-3 border-b">Nome</th>
+              <th className="p-3 border-b">Contatos</th>
+              <th className="p-3 border-b">Localização</th>
+              <th className="p-3 border-b">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {MOCK_CLIENTS.map((client) => (
+              <tr 
+                key={client.id} 
+                onClick={() => setSelectedClient(client)}
+                className={`cursor-pointer hover:bg-blue-50 transition-colors group ${
+                  selectedClient?.id === client.id ? 'bg-blue-100' : ''
+                }`}
+              >
+                <td className="p-3 pl-6 text-gray-400 font-mono text-xs">{client.id}</td>
+                <td className="p-3">
+                  <div className="font-bold text-gray-800">{client.nome}</div>
+                  <div className="text-xs text-gray-500 uppercase">{client.tipo}</div>
+                </td>
+                <td className="p-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="flex items-center gap-1 text-gray-700 font-medium">
+                      <Phone size={12} className="text-kadilac-300"/> {client.telefone}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <Mail size={12}/> {client.email}
+                    </span>
+                  </div>
+                </td>
+                <td className="p-3 text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <MapPin size={14} className="text-gray-400"/> {client.cidade}
+                  </div>
+                </td>
+                <td className="p-3">
+                   <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider border ${
+                    client.status === 'Ativo' ? 'bg-green-50 text-green-700 border-green-100' :
+                    client.status === 'Interessado' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                    'bg-gray-50 text-gray-500 border-gray-200'
+                  }`}>
+                    {client.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* --- PAINEL DE DETALHES (BOTTOM PANEL - Idêntico ao Estoque) --- */}
+      {selectedClient && (
+        <div className="bg-white h-72 rounded-t-lg shadow-[0_-4px_15px_-3px_rgba(0,0,0,0.1)] flex flex-col border-t-4 border-kadilac-300 animate-slide-up transition-all duration-300 z-20">
+          
+          {/* Tabs do Painel */}
+          <div className="flex border-b bg-gray-50 items-center">
+            <button onClick={() => setActiveTab('dados')} className={`px-6 py-3 text-sm font-bold flex items-center gap-2 transition-colors border-r ${activeTab === 'dados' ? 'bg-white text-kadilac-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              <User size={16}/> Dados
+            </button>
+            <button onClick={() => setActiveTab('historico')} className={`px-6 py-3 text-sm font-bold flex items-center gap-2 transition-colors border-r ${activeTab === 'historico' ? 'bg-white text-kadilac-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              <FileText size={16}/> Histórico
+            </button>
+            <button onClick={() => setActiveTab('financeiro')} className={`px-6 py-3 text-sm font-bold flex items-center gap-2 transition-colors border-r ${activeTab === 'financeiro' ? 'bg-white text-kadilac-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              <DollarSign size={16}/> Financeiro
+            </button>
             
-          {/* Tabela com Scroll */}
-          <div className="flex-1 overflow-auto border-b border-gray-200 bg-white">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-100 text-gray-600 sticky top-0 z-10 shadow-sm">
-                <tr>
-                  <th className="px-4 py-3 font-semibold w-16 text-center">Tipo</th>
-                  <th className="px-4 py-3 font-semibold">Nome / Empresa</th>
-                  <th className="px-4 py-3 font-semibold">Telefone</th>
-                  <th className="px-4 py-3 font-semibold">Tipo do Cliente</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {MOCK_CLIENTS.map((client) => (
-                  <tr 
-                    key={client.id}
-                    onClick={() => setSelectedClient(client)}
-                    className={`cursor-pointer hover:bg-blue-50 transition-colors ${selectedClient?.id === client.id ? 'bg-blue-100 border-l-4 border-blue-600' : ''}`}
-                  >
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${client.type === 'F' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                        {client.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-slate-700">{client.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{client.phone}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs border border-gray-200">
-                        {client.clientType}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="flex-1 flex justify-end pr-4">
+               <button onClick={() => setSelectedClient(null)} className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-red-500 transition-colors">
+                 <ChevronDown size={20}/>
+               </button>
+            </div>
           </div>
 
-          {/* PAINEL DE DETALHES (Footer fixo ou scrollável) */}
-          {/* Reproduzindo a área "Detalhes do Cliente" do print */}
-          <div className="h-2/5 bg-gray-50 border-t border-gray-300 overflow-y-auto p-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-            
-            {selectedClient ? (
-              <div className="max-w-6xl mx-auto">
-                <div className="flex items-center gap-2 mb-4 border-b border-gray-200 pb-2">
-                  <User className="w-5 h-5 text-blue-600" />
-                  <h2 className="text-lg font-bold text-slate-800">
-                    Detalhes: <span className="text-blue-600">{selectedClient.name}</span>
-                  </h2>
+          {/* Conteúdo das Tabs */}
+          <div className="p-6 overflow-auto flex-1 bg-white">
+            {activeTab === 'dados' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm animate-fade-in">
+                <div className="space-y-4">
+                   <div>
+                     <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">Cliente</span>
+                     <p className="font-bold text-gray-800 text-lg border-b pb-1">{selectedClient.nome}</p>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">CPF/CNPJ</span>
+                       <p className="text-gray-700 font-mono">000.000.000-00</p>
+                     </div>
+                     <div>
+                       <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">Tipo</span>
+                       <p className="text-gray-700">{selectedClient.tipo}</p>
+                     </div>
+                   </div>
                 </div>
-
-                <form className="grid grid-cols-12 gap-6">
-                  
-                  {/* Bloco 1: Dados Pessoais */}
-                  <div className="col-span-12 md:col-span-12 lg:col-span-4 space-y-4">
-                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Dados Básicos</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">CPF / CNPJ</label>
-                            <input type="text" readOnly value={selectedClient.doc} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Dt. Nascimento</label>
-                            <input type="date" readOnly value={selectedClient.birthDate} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
-                        <input type="email" readOnly value={selectedClient.email} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                    </div>
-                  </div>
-
-                  {/* Bloco 2: Endereço */}
-                  <div className="col-span-12 md:col-span-6 lg:col-span-4 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Endereço</h3>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-2">
-                        <div className="col-span-2">
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Rua</label>
-                            <input type="text" readOnly value={selectedClient.address.street} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                        </div>
-                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">CEP</label>
-                            <input type="text" readOnly value={selectedClient.address.zip} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                         <div className="col-span-1">
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Bairro</label>
-                            <input type="text" readOnly value={selectedClient.address.district} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                        </div>
-                        <div className="col-span-1">
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Cidade</label>
-                            <input type="text" readOnly value={selectedClient.address.city} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                        </div>
-                        <div className="col-span-1">
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Estado</label>
-                            <input type="text" readOnly value={selectedClient.address.state} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                        </div>
-                    </div>
-                  </div>
-
-                  {/* Bloco 3: Dados Profissionais */}
-                  <div className="col-span-12 md:col-span-6 lg:col-span-4 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Briefcase className="w-4 h-4 text-gray-400" />
-                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Profissional</h3>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Trabalha na (Empresa)</label>
-                        <input type="text" readOnly value={selectedClient.job.company} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                    </div>
-                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Cargo</label>
-                        <input type="text" readOnly value={selectedClient.job.role} className="w-full p-2 bg-white border border-gray-300 rounded text-sm" />
-                    </div>
-                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Observações</label>
-                        <textarea className="w-full p-2 bg-white border border-gray-300 rounded text-sm h-20 resize-none" placeholder="Sem observações..."></textarea>
-                    </div>
-                  </div>
-
-                </form>
+                <div className="space-y-4 border-l pl-4 border-gray-100">
+                   <div>
+                     <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">Contato Principal</span>
+                     <p className="text-gray-700 flex items-center gap-2 font-medium text-base"><Phone size={14} className="text-green-600"/> {selectedClient.telefone}</p>
+                   </div>
+                   <div>
+                     <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">Email</span>
+                     <p className="text-blue-600 underline cursor-pointer">{selectedClient.email}</p>
+                   </div>
+                </div>
+                <div className="space-y-4 border-l pl-4 border-gray-100">
+                   <div>
+                     <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">Endereço</span>
+                     <p className="text-gray-700 font-medium">{selectedClient.cidade}</p>
+                     <p className="text-gray-500 text-xs">Rua Exemplo, 123 - Centro</p>
+                   </div>
+                   <div className="flex gap-2 pt-2">
+                     <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border">Ver no Mapa</button>
+                   </div>
+                </div>
               </div>
-            ) : (
-                <div className="h-full flex items-center justify-center text-gray-400">
-                    Selecione um cliente para ver os detalhes
-                </div>
+            )}
+            
+            {/* Mensagens de Vazio para outras abas */}
+            {activeTab === 'historico' && (
+              <div className="flex flex-col items-center justify-center h-full text-gray-300">
+                <FileText size={40} className="mb-2 opacity-30"/>
+                <p>Nenhum histórico recente.</p>
+              </div>
+            )}
+            {activeTab === 'financeiro' && (
+               <div className="flex flex-col items-center justify-center h-full text-gray-300">
+                 <DollarSign size={40} className="mb-2 opacity-30"/>
+                 <p>Situação financeira regular.</p>
+               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export default ClientModule;
+export default Clientes;
