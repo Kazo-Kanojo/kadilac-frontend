@@ -8,11 +8,11 @@ export default {
     extend: {
       colors: {
         kadilac: {
-          100: '#c46266', // Mais claro
+          100: '#c46266',
           200: '#a6494e',
-          300: '#883136', // Tom médio (Principal)
+          300: '#883136',
           400: '#6b181e',
-          500: '#4d0006', // Mais escuro (Sidebar)
+          500: '#4d0006',
         }
       }
     },

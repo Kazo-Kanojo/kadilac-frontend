@@ -1,6 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-
-body {
-  background-color: #f3f4f6; /* Fundo cinza bem clarinho para destacar o branco */
+body, html {
+  height: 100%;
+  background-color: #f3f4f6; /* Fundo cinza claro para destacar o sistema */
 }
