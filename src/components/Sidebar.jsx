@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { LayoutDashboard, Car, Users, Wallet, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Car, Users, Wallet, Settings, LogOut, } from 'lucide-react';
 
 const Sidebar = ({ activeScreen, setActiveScreen }) => {
   const MenuItem = ({ id, icon: Icon, label }) => (
