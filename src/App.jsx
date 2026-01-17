@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import Sidebar from './components/layout/Sidebar';
-import Dashboard from './pages/Dashboard';
-import Estoque from './pages/Estoque';
+import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
+import Estoque from './components/Estoque';
 import Clientes from './pages/Clientes';
 import { LayoutDashboard, Car, Users, Settings } from 'lucide-react';
 

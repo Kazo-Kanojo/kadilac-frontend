@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useState } from 'react';
 import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter } from 'lucide-react';
-import VehicleModal from '../components/VehicleModal'; // Importando o modal que criamos
-import CloseFileModal from '../components/CloseFileModal';
+import VehicleModal from './VehicleModal'; // Importando o modal que criamos
+import CloseFileModal from './CloseFileModal';
 
 // Dados iniciais (Mock)
 const INITIAL_VEHICLES = [
