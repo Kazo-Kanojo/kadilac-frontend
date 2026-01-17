@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { Car, DollarSign, Users, ShoppingBag, TrendingUp, ArrowRight } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000';
+import { API_BASE_URL } from '../api';
 
 const Dashboard = ({ activeScreen, setActiveScreen }) => {
   const [stats, setStats] = useState({
@@ -16,16 +15,15 @@ const Dashboard = ({ activeScreen, setActiveScreen }) => {
   // Buscar dados do Backend
   useEffect(() => {
     const fetchDashboard = async () => {
-      try {
-        const response = await fetch(`${API_URL}/dashboard/resumo`);
-        const data = await response.json();
-        setStats(data);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Erro ao carregar dashboard:", error);
-        setIsLoading(false);
-      }
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboard/resumo`);
+      if (!response.ok) throw new Error('Erro ao carregar dashboard');
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Erro:', error);
+    }
+  };
 
     fetchDashboard();
   }, []);

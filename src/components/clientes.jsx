@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import ClientModal from './ClientModal';
 import { Plus, Pencil, Trash2, Search, RefreshCw } from 'lucide-react';
+import { API_BASE_URL } from '../api';
 
-const API_URL = 'http://localhost:5000';
+
 
 const Clientes = ({ activeScreen, setActiveScreen }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,14 +15,15 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Buscar Clientes
-  const fetchClients = async () => {
+ const fetchClientes = async () => {
     try {
-      const response = await fetch(`${API_URL}/clientes`);
+      const response = await fetch(`${API_BASE_URL}/clientes`);
+      if (!response.ok) throw new Error('Erro ao buscar clientes');
       const data = await response.json();
-      setClients(data);
-      setIsLoading(false);
+      setClientes(data);
+      setFilteredClientes(data);
     } catch (error) {
-      console.error("Erro ao buscar clientes", error);
+      console.error('Erro:', error);
     }
   };
 

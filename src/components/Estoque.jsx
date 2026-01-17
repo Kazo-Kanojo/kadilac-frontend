@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
-
-const API_URL = 'http://localhost:5000';
+import { API_BASE_URL } from '../api';
 
 const Estoque = () => {
   const [vehicles, setVehicles] = useState([]); 
@@ -19,14 +18,13 @@ const Estoque = () => {
   // --- CARREGAR DADOS DA API ---
   const fetchVehicles = async () => {
     try {
-      const response = await fetch(`${API_URL}/veiculos`);
+      const response = await fetch(`${API_BASE_URL}/veiculos`);
+      if (!response.ok) throw new Error('Erro ao buscar veículos');
       const data = await response.json();
       setVehicles(data);
-      setIsLoading(false);
+      setFilteredVehicles(data);
     } catch (error) {
-      console.error("Erro ao buscar veículos:", error);
-      alert("Erro ao conectar com o servidor.");
-      setIsLoading(false);
+      console.error('Erro:', error);
     }
   };
 
