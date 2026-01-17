@@ -3,27 +3,40 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Estoque from './components/Estoque';
 import Clientes from './components/clientes';
-import { LayoutDashboard, Car, Users, Settings } from 'lucide-react';
+import { Settings, Menu } from 'lucide-react';
 
 function App() {
   const [activeScreen, setActiveScreen] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden font-sans text-gray-800">
       
-      {/* Sidebar isolada */}
-      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
+      {/* Sidebar com props de controle mobile */}
+      <Sidebar 
+        activeScreen={activeScreen} 
+        setActiveScreen={setActiveScreen} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-gray-100">
-        {/* Header (Pode virar componente também depois) */}
-        <header className="h-16 bg-white shadow-sm flex justify-between items-center px-6 z-10 flex-shrink-0">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-gray-100 w-full">
+        {/* Header */}
+        <header className="h-16 bg-white shadow-sm flex items-center px-4 md:px-6 z-10 flex-shrink-0 gap-4">
+           {/* Botão Menu Mobile (Só aparece em telas pequenas) */}
+           <button 
+             onClick={() => setIsSidebarOpen(true)}
+             className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+           >
+             <Menu size={24} />
+           </button>
+
            <h2 className="text-xl font-bold text-gray-700 capitalize flex items-center gap-2">
              <span className="mt-1">{activeScreen}</span>
            </h2>
-           {/* ... resto do header ... */}
         </header>
 
-        <div className="flex-1 overflow-hidden p-6">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
           <div className="h-full max-w-7xl mx-auto flex flex-col">
             {activeScreen === 'dashboard' && <Dashboard />}
             {activeScreen === 'estoque' && <Estoque />}
