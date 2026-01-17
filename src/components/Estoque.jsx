@@ -68,6 +68,7 @@ const Estoque = () => {
 
   const handleSaveVehicle = async (data) => {
     try {
+        // Se modalMode for 'create', cria novo (POST)
         if (modalMode === 'create') {
             const response = await fetch(`${API_URL}/veiculos`, {
                 method: 'POST',
@@ -75,25 +76,34 @@ const Estoque = () => {
                 body: JSON.stringify(data)
             });
             const newVehicle = await response.json();
+            // Adiciona na lista sem recarregar tudo
             setVehicles([newVehicle, ...vehicles]); 
-        } else {
+        } 
+        // Se modalMode for 'edit', atualiza existente (PUT)
+        else {
+            if (!selectedCar || !selectedCar.id) {
+                alert("Erro: Nenhum veículo selecionado para edição.");
+                return;
+            }
+
             await fetch(`${API_URL}/veiculos/${selectedCar.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
             
-            // Atualiza localmente
+            // Atualiza a lista localmente para refletir a mudança imediata
             const updatedCar = { ...selectedCar, ...data }; 
             const updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
             setVehicles(updatedList);
             setSelectedCar(updatedCar);
         }
         setIsModalOpen(false);
+        // Recarrega do banco para garantir que tudo está sincronizado (Opcional, mas seguro)
         fetchVehicles(); 
     } catch (error) {
         console.error("Erro ao salvar:", error);
-        alert("Erro ao salvar dados (Verifique o tamanho da foto).");
+        alert("Erro ao salvar dados.");
     }
   };
 
