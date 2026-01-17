@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Estoque from './components/Estoque';
-import Clientes from './components/cliente';
+import Clientes from './components/clientes';
 import { LayoutDashboard, Car, Users, Settings } from 'lucide-react';
 
 function App() {

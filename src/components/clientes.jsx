@@ -1,61 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import ClientModal from '../components/ClientModal';
-import { Plus, Pencil, Trash2, Search, Filter, RefreshCw } from 'lucide-react';
+import ClientModal from './ClientModal';
+import { Plus, Pencil, Trash2, Search, RefreshCw } from 'lucide-react';
+
+const API_URL = 'http://localhost:5000';
 
 const Clientes = ({ activeScreen, setActiveScreen }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState(null); // Estado para controlar a seleção
+  const [selectedClientId, setSelectedClientId] = useState(null);
   const [currentClient, setCurrentClient] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Dados Mockados
-  const [clients, setClients] = useState([
-    { 
-      id: 1, 
-      nome: 'João Silva', 
-      tipo: 'PF', 
-      cpf_cnpj: '123.456.789-00', 
-      rg: '12.345.678-9', // Novo campo
-      data_nascimento: '1990-05-15', // Novo campo
-      data_cadastro: '2023-01-10', // Novo campo
-      telefone: '(11) 99999-9999', 
-      email: 'joao@email.com', 
-      cep: '01001-000',
-      endereco: 'Rua das Flores',
-      numero: '123',
-      bairro: 'Centro', // Novo campo
-      cidade: 'São Paulo', 
-      estado: 'SP'
-    },
-  ]);
+  // Buscar Clientes
+  const fetchClients = async () => {
+    try {
+      const response = await fetch(`${API_URL}/clientes`);
+      const data = await response.json();
+      setClients(data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Erro ao buscar clientes", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
 
   const handleOpenModal = (client = null) => {
     setCurrentClient(client);
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setCurrentClient(null);
-  };
-
-  const handleSaveClient = (clientData) => {
-    if (currentClient) {
-      setClients(clients.map(c => c.id === currentClient.id ? { ...clientData, id: c.id } : c));
-    } else {
-      setClients([...clients, { ...clientData, id: Date.now() }]);
+  const handleSaveClient = async (clientData) => {
+    try {
+        if (currentClient) {
+            // Editar
+            await fetch(`${API_URL}/clientes/${currentClient.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(clientData)
+            });
+            setClients(clients.map(c => c.id === currentClient.id ? { ...clientData, id: c.id } : c));
+        } else {
+            // Criar
+            const res = await fetch(`${API_URL}/clientes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(clientData)
+            });
+            const newClient = await res.json();
+            setClients([newClient, ...clients]);
+        }
+        setIsModalOpen(false);
+        setCurrentClient(null);
+        setSelectedClientId(null);
+    } catch (error) {
+        alert("Erro ao salvar cliente.");
     }
-    handleCloseModal();
-    setSelectedClientId(null); // Limpa seleção após salvar
   };
 
-  const handleDeleteClient = () => {
+  const handleDeleteClient = async () => {
     if (!selectedClientId) return;
-    
     if (confirm('Tem certeza que deseja excluir o cliente selecionado?')) {
-      setClients(clients.filter(c => c.id !== selectedClientId));
-      setSelectedClientId(null);
+      try {
+          await fetch(`${API_URL}/clientes/${selectedClientId}`, { method: 'DELETE' });
+          setClients(clients.filter(c => c.id !== selectedClientId));
+          setSelectedClientId(null);
+      } catch (error) {
+          alert("Erro ao excluir cliente.");
+      }
     }
   };
 
@@ -65,12 +81,17 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
     handleOpenModal(clientToEdit);
   };
 
+  // ... (O restante do código de renderização/HTML permanece IGUAL ao anterior)
+  // Certifique-se apenas de usar a variável `clients` filtrada abaixo:
+  
   const filteredClients = clients.filter(client => 
     client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.cpf_cnpj.includes(searchTerm)
   );
 
   return (
+    // ... Copie o retorno do JSX do código anterior de Clientes.jsx
+    // Apenas certifique-se de que os botões chamam as funções acima (handleSaveClient, handleDeleteClient)
     <div className="flex h-screen bg-gray-100">
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header Superior */}
@@ -138,7 +159,7 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600" title="Atualizar">
+            <button onClick={fetchClients} className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600" title="Atualizar">
                 <RefreshCw size={18} />
             </button>
           </div>
@@ -161,7 +182,9 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredClients.map((client) => {
+                {isLoading ? (
+                    <tr><td colSpan="6" className="p-4 text-center">Carregando clientes...</td></tr>
+                ) : filteredClients.map((client) => {
                   const isSelected = selectedClientId === client.id;
                   return (
                     <tr 
@@ -173,7 +196,7 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
                     >
                       <td className="px-4 py-4 text-center">
                         <input 
-                          type="radio" // Usei Radio pois a lógica atual edita 1 por vez
+                          type="radio" 
                           name="clientSelect"
                           checked={isSelected}
                           onChange={() => setSelectedClientId(client.id)}
@@ -198,24 +221,15 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
                     </tr>
                   );
                 })}
-                {filteredClients.length === 0 && (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400 flex flex-col items-center justify-center">
-                      <Search size={48} className="mb-4 opacity-20" />
-                      <p>Nenhum cliente encontrado com os filtros atuais.</p>
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </div>
       </main>
 
-      {/* Mantive o Modal igual, apenas garantindo a passagem correta das props */}
       <ClientModal 
         isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
+        onClose={() => setIsModalOpen(false)} 
         onSave={handleSaveClient}
         initialData={currentClient}
       />
