@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
-import { LayoutDashboard, Car, Users, Wallet, Settings, LogOut, X } from 'lucide-react';
+
+import { LayoutDashboard, Car, Users, Wallet, Settings, LogOut, X, FilePlus } from 'lucide-react';
 
 const Sidebar = ({ activeScreen, setActiveScreen, isOpen, onClose }) => {
   
@@ -52,6 +52,10 @@ const Sidebar = ({ activeScreen, setActiveScreen, isOpen, onClose }) => {
 
         <nav className="flex-1 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           <MenuItem id="dashboard" icon={LayoutDashboard} label="Visão Geral" />
+          
+          {/* 2. Botão Nova Ficha Adicionado Aqui */}
+          <MenuItem id="nova-ficha" icon={FilePlus} label="Nova Ficha" />
+          
           <MenuItem id="estoque" icon={Car} label="Veículos" />
           <MenuItem id="clientes" icon={Users} label="Clientes" />
           <MenuItem id="financeiro" icon={Wallet} label="Financeiro" />
