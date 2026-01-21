@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
-// 1. Correção: Importação correta (mantida)
+import PrintButton from './PrintButton';
 import { API_BASE_URL } from '../api';
 
 const Estoque = () => {
@@ -20,13 +20,12 @@ const Estoque = () => {
   // --- CARREGAR DADOS DA API ---
   const fetchVehicles = async () => {
     try {
-      // 2. Correção: Usar API_BASE_URL aqui
       const response = await fetch(`${API_BASE_URL}/veiculos`);
       if (!response.ok) throw new Error('Erro ao buscar veículos');
       const data = await response.json();
       setVehicles(data);
-      setFilteredVehicles(data); // Mantém o filtro sincronizado
-      setIsLoading(false); // Importante: parar o loading
+      setFilteredVehicles(data);
+      setIsLoading(false);
     } catch (error) {
       console.error('Erro:', error);
       setIsLoading(false);
@@ -64,16 +63,11 @@ const Estoque = () => {
             const response = await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, { 
                 method: 'DELETE' 
             });
-
-            // --- A CORREÇÃO ESTÁ AQUI ---
-            // Se o servidor responder com erro (404, 500, etc), nós paramos e avisamos
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || 'O servidor recusou a exclusão.');
             }
-            // ---------------------------
             
-            // Só executa isso se o response.ok for true
             const updatedList = vehicles.filter(v => v.id !== selectedCar.id);
             setVehicles(updatedList);
             setFilteredVehicles(updatedList);
@@ -91,7 +85,6 @@ const Estoque = () => {
         let updatedList;
         // Se modalMode for 'create', cria novo (POST)
         if (modalMode === 'create') {
-            // 4. Correção: Substituído API_URL por API_BASE_URL
             const response = await fetch(`${API_BASE_URL}/veiculos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -107,7 +100,6 @@ const Estoque = () => {
                 return;
             }
 
-            // 5. Correção: Substituído API_URL por API_BASE_URL
             await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -119,7 +111,6 @@ const Estoque = () => {
             setSelectedCar(updatedCar);
         }
         
-        // Atualiza ambos os estados para refletir na tela
         setVehicles(updatedList);
         setFilteredVehicles(updatedList);
         setIsModalOpen(false);
@@ -134,7 +125,6 @@ const Estoque = () => {
      try {
         const updatedData = { ...selectedCar, status: 'Vendido', ...saleData };
         
-        // 6. Correção: Substituído API_URL por API_BASE_URL
         await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -143,7 +133,7 @@ const Estoque = () => {
 
         const updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedData : v);
         setVehicles(updatedList);
-        setFilteredVehicles(updatedList); // Atualiza visualização
+        setFilteredVehicles(updatedList);
         setSelectedCar(updatedData);
         setIsCloseModalOpen(false);
      } catch (error) {
@@ -180,6 +170,14 @@ const Estoque = () => {
             <span className="text-xs font-bold text-gray-600">Excluir</span>
          </button>
 
+         
+         {selectedCar && (
+            <div className="flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent hover:bg-gray-50 hover:border-gray-200 transition-all group min-w-[80px]">
+                <PrintButton data={selectedCar} type="vehicle" />
+                <span className="text-xs font-bold text-gray-600 mt-1">Imprimir</span>
+            </div>
+         )}
+
          <div className="w-full md:flex-1"></div>
          
          <div className="w-full md:w-auto flex items-center bg-gray-100 rounded px-2 py-1 border border-gray-200 mt-2 md:mt-0">
@@ -214,7 +212,6 @@ const Estoque = () => {
                 ) : filteredVehicles.length === 0 ? (
                    <tr><td colSpan="7" className="p-4 text-center text-gray-400">Nenhum veículo cadastrado.</td></tr>
                 ) : (
-                  // 7. Correção: Mapeando filteredVehicles em vez de vehicles para a tela atualizar
                   filteredVehicles.map((car) => (
                     <tr 
                       key={car.id} 
@@ -280,13 +277,11 @@ const Estoque = () => {
                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Modelo:</span> <span className="font-bold uppercase">{selectedCar.modelo}</span></div>
                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Placa:</span> <span className="font-bold uppercase">{selectedCar.placa}</span></div>
                    
-                   {/* CAMPO RESTAURADO: Combustível */}
                    <div className="flex justify-between border-b border-gray-100 pb-1">
                         <span className="text-gray-500 flex items-center gap-1"><Fuel size={12}/> Combustível:</span> 
                         <span>{selectedCar.combustivel || '-'}</span>
                    </div>
                    
-                   {/* CAMPO: Data de Entrada */}
                    <div className="flex justify-between border-b border-gray-100 pb-1">
                        <span className="text-gray-500">Entrada:</span> 
                        <span className="font-bold">
@@ -297,14 +292,13 @@ const Estoque = () => {
 
                 {/* Coluna 2: Dados de Origem e Doc */}
                 <div className="space-y-2">
-                   {/* CAMPOS RESTAURADOS: Proprietário e Vendedor */}
                    <div className="flex justify-between border-b border-gray-100 pb-1">
                         <span className="text-gray-500 flex items-center gap-1"><User size={12}/> Proprietário Ant.:</span> 
                         <span className="uppercase text-gray-700 font-medium">{selectedCar.proprietario_anterior || '-'}</span>
                    </div>
                    <div className="flex justify-between border-b border-gray-100 pb-1">
-                        <span className="text-gray-500">Vendedor (Origem):</span> 
-                        <span className="text-gray-700">{selectedCar.vendedor || '-'}</span>
+                       <span className="text-gray-500">Vendedor (Origem):</span> 
+                       <span className="text-gray-700">{selectedCar.vendedor || '-'}</span>
                    </div>
 
                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Renavam:</span> <span>{selectedCar.renavam || '-'}</span></div>
