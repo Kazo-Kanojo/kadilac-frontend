@@ -3,9 +3,11 @@ import { useState, useEffect } from 'react';
 import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
+// 1. Correção: Importação correta (mantida)
 import { API_BASE_URL } from '../api';
 
 const Estoque = () => {
+  const [filteredVehicles, setFilteredVehicles] = useState([]);
   const [vehicles, setVehicles] = useState([]); 
   const [selectedCar, setSelectedCar] = useState(null);
   const [activeTab, setActiveTab] = useState('detalhes');
@@ -18,13 +20,16 @@ const Estoque = () => {
   // --- CARREGAR DADOS DA API ---
   const fetchVehicles = async () => {
     try {
+      // 2. Correção: Usar API_BASE_URL aqui
       const response = await fetch(`${API_BASE_URL}/veiculos`);
       if (!response.ok) throw new Error('Erro ao buscar veículos');
       const data = await response.json();
       setVehicles(data);
-      setFilteredVehicles(data);
+      setFilteredVehicles(data); // Mantém o filtro sincronizado
+      setIsLoading(false); // Importante: parar o loading
     } catch (error) {
       console.error('Erro:', error);
+      setIsLoading(false);
     }
   };
 
@@ -51,31 +56,49 @@ const Estoque = () => {
     setIsCloseModalOpen(true);
   };
 
-  const handleDeleteCar = async () => {
+ const handleDeleteCar = async () => {
     if (!selectedCar) return;
+    // eslint-disable-next-line no-restricted-globals
     if (confirm(`Tem certeza que deseja excluir o veículo ${selectedCar.modelo}?`)) {
         try {
-            await fetch(`${API_URL}/veiculos/${selectedCar.id}`, { method: 'DELETE' });
-            setVehicles(vehicles.filter(v => v.id !== selectedCar.id));
+            const response = await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, { 
+                method: 'DELETE' 
+            });
+
+            // --- A CORREÇÃO ESTÁ AQUI ---
+            // Se o servidor responder com erro (404, 500, etc), nós paramos e avisamos
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'O servidor recusou a exclusão.');
+            }
+            // ---------------------------
+            
+            // Só executa isso se o response.ok for true
+            const updatedList = vehicles.filter(v => v.id !== selectedCar.id);
+            setVehicles(updatedList);
+            setFilteredVehicles(updatedList);
             setSelectedCar(null);
+            
         } catch (error) {
             console.error("Erro ao excluir:", error);
+            alert("Erro ao excluir: " + error.message);
         }
     }
   };
 
   const handleSaveVehicle = async (data) => {
     try {
+        let updatedList;
         // Se modalMode for 'create', cria novo (POST)
         if (modalMode === 'create') {
-            const response = await fetch(`${API_URL}/veiculos`, {
+            // 4. Correção: Substituído API_URL por API_BASE_URL
+            const response = await fetch(`${API_BASE_URL}/veiculos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
             const newVehicle = await response.json();
-            // Adiciona na lista sem recarregar tudo
-            setVehicles([newVehicle, ...vehicles]); 
+            updatedList = [newVehicle, ...vehicles];
         } 
         // Se modalMode for 'edit', atualiza existente (PUT)
         else {
@@ -84,21 +107,23 @@ const Estoque = () => {
                 return;
             }
 
-            await fetch(`${API_URL}/veiculos/${selectedCar.id}`, {
+            // 5. Correção: Substituído API_URL por API_BASE_URL
+            await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
             
-            // Atualiza a lista localmente para refletir a mudança imediata
             const updatedCar = { ...selectedCar, ...data }; 
-            const updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
-            setVehicles(updatedList);
+            updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
             setSelectedCar(updatedCar);
         }
+        
+        // Atualiza ambos os estados para refletir na tela
+        setVehicles(updatedList);
+        setFilteredVehicles(updatedList);
         setIsModalOpen(false);
-        // Recarrega do banco para garantir que tudo está sincronizado (Opcional, mas seguro)
-        fetchVehicles(); 
+        
     } catch (error) {
         console.error("Erro ao salvar:", error);
         alert("Erro ao salvar dados.");
@@ -109,13 +134,16 @@ const Estoque = () => {
      try {
         const updatedData = { ...selectedCar, status: 'Vendido', ...saleData };
         
-        await fetch(`${API_URL}/veiculos/${selectedCar.id}`, {
+        // 6. Correção: Substituído API_URL por API_BASE_URL
+        await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedData)
         });
 
-        setVehicles(vehicles.map(v => v.id === selectedCar.id ? updatedData : v));
+        const updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedData : v);
+        setVehicles(updatedList);
+        setFilteredVehicles(updatedList); // Atualiza visualização
         setSelectedCar(updatedData);
         setIsCloseModalOpen(false);
      } catch (error) {
@@ -183,10 +211,11 @@ const Estoque = () => {
               <tbody className="divide-y">
                 {isLoading ? (
                    <tr><td colSpan="7" className="p-4 text-center">Carregando estoque...</td></tr>
-                ) : vehicles.length === 0 ? (
+                ) : filteredVehicles.length === 0 ? (
                    <tr><td colSpan="7" className="p-4 text-center text-gray-400">Nenhum veículo cadastrado.</td></tr>
                 ) : (
-                  vehicles.map((car) => (
+                  // 7. Correção: Mapeando filteredVehicles em vez de vehicles para a tela atualizar
+                  filteredVehicles.map((car) => (
                     <tr 
                       key={car.id} 
                       onClick={() => { setSelectedCar(car); setActiveTab('detalhes'); }}
@@ -194,10 +223,10 @@ const Estoque = () => {
                     >
                       <td className="p-3">
                         {car.data_entrada 
-                            ? new Date(car.data_entrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
-                            : car.dataEntrada 
-                                ? new Date(car.dataEntrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
-                                : '-'}
+                           ? new Date(car.data_entrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
+                           : car.dataEntrada 
+                               ? new Date(car.dataEntrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
+                               : '-'}
                       </td>
                       <td className="p-3 uppercase">{car.modelo}</td>
                       <td className="p-3">{car.cor}</td>
@@ -218,7 +247,7 @@ const Estoque = () => {
         </div>
       </div>
 
-      {/* PAINEL INFERIOR DE DETALHES (Com os campos restaurados) */}
+      {/* PAINEL INFERIOR DE DETALHES */}
       {selectedCar && (
         <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-inner mt-2 z-20">
           <div className="flex border-b bg-gray-100 overflow-x-auto">
@@ -293,12 +322,12 @@ const Estoque = () => {
             {activeTab === 'financeiro' && (
                 <div className="flex flex-col md:flex-row gap-4 md:gap-8 items-start">
                   <div className="bg-red-50 p-4 rounded border border-red-100 w-full md:w-1/3">
-                     <h4 className="text-red-700 font-bold border-b border-red-200 pb-1 mb-2 text-xs uppercase">Entrada</h4>
-                     <div className="flex justify-between text-sm"><span>Custo:</span> <span className="font-bold">R$ {Number(selectedCar.custo).toLocaleString()}</span></div>
+                      <h4 className="text-red-700 font-bold border-b border-red-200 pb-1 mb-2 text-xs uppercase">Entrada</h4>
+                      <div className="flex justify-between text-sm"><span>Custo:</span> <span className="font-bold">R$ {Number(selectedCar.custo).toLocaleString()}</span></div>
                   </div>
                   <div className="bg-blue-50 p-4 rounded border border-blue-100 w-full md:w-1/3">
-                     <h4 className="text-blue-700 font-bold border-b border-blue-200 pb-1 mb-2 text-xs uppercase">Saída</h4>
-                     <div className="flex justify-between text-sm"><span>Venda:</span> <span className="font-bold">R$ {Number(selectedCar.valor).toLocaleString()}</span></div>
+                      <h4 className="text-blue-700 font-bold border-b border-blue-200 pb-1 mb-2 text-xs uppercase">Saída</h4>
+                      <div className="flex justify-between text-sm"><span>Venda:</span> <span className="font-bold">R$ {Number(selectedCar.valor).toLocaleString()}</span></div>
                   </div>
                </div>
             )}

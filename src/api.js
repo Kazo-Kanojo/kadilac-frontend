@@ -1,6 +1,10 @@
+import axios from 'axios';
 
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Função auxiliar para montar URLs completas
-export const getApiUrl = (endpoint) => `${API_BASE_URL}${endpoint}`;
+const api = axios.create({
+  baseURL: API_BASE_URL
+});
+
+export default api;
