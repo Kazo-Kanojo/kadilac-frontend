@@ -1,0 +1,341 @@
+/* ==========================================================================
+   CONFIGURAÇÕES GERAIS E LAYOUT A4 (BASE PARA TODOS OS DOCUMENTOS)
+   ========================================================================== */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 11pt;
+    color: #000;
+}
+
+.recibo-a4 {
+    width: 21cm;
+    min-height: 29.7cm;
+    padding: 2cm;
+    margin: 1cm auto;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+    position: relative; /* Para elementos posicionados absolutamente */
+}
+
+/* Estilos de Header comuns */
+.doc-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.doc-header h1 {
+    margin: 0;
+    font-size: 16pt;
+    font-weight: bold;
+}
+
+.doc-header .subtitulo {
+    margin: 5px 0;
+    font-size: 12pt;
+    font-weight: bold;
+}
+
+.doc-header .separador {
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+/* Estilos de Campos com linha pontilhada */
+.field-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 10px;
+}
+
+.field {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: 12px;
+}
+
+.field label {
+    font-weight: bold;
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.field span, .field .value {
+    flex-grow: 1;
+    border-bottom: 2px dotted #000;
+    padding: 0 5px;
+    font-weight: 500;
+    line-height: 1.2;
+    min-height: 20px; /* Garante altura mínima mesmo vazio */
+}
+
+.field.full { flex-basis: 100%; }
+.field.half { flex-basis: 48%; }
+.field.third { flex-basis: 31%; }
+.field.two-thirds { flex-basis: 65%; }
+
+
+/* Seção de Informações do Veículo (Reutilizável) */
+.info-veiculo {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin: 25px 0;
+    border-top: 1px dashed #000;
+    border-bottom: 1px dashed #000;
+    padding: 15px 0;
+}
+
+/* Assinaturas (Reutilizável) */
+.assinaturas {
+    display: flex;
+    justify-content: space-around; /* Espaçamento melhor */
+    margin-top: 80px;
+}
+
+.assinatura-block {
+    flex-basis: 45%;
+    text-align: center;
+}
+
+.linha-assinatura {
+    border-top: 2px solid #000;
+    margin-bottom: 10px;
+}
+
+.assinatura-block p {
+    margin: 0;
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+.assinatura-block .acordo {
+    font-size: 9pt;
+    font-weight: normal;
+}
+
+/* Parágrafos e textos longos */
+.paragrafo-justificado {
+    text-align: justify;
+    line-height: 1.8;
+}
+
+/* ==========================================================================
+   ESTILOS DO RECIBO DE VENDA (JÁ CRIADO)
+   ========================================================================== */
+.recibo-venda .valor-box {
+    float: right;
+    border: 2px solid #000;
+    padding: 5px 15px;
+    font-size: 12pt;
+    font-weight: bold;
+    margin-top: -50px;
+}
+
+.recibo-venda .obs-box {
+    border: 1px solid #000;
+    padding: 15px;
+    min-height: 150px;
+}
+
+.recibo-venda .extra-info {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+}
+
+.recibo-venda .data-local {
+    text-align: right;
+    margin-top: 40px;
+}
+
+/* ==========================================================================
+   ESTILOS DO TERMO DE RESPONSABILIDADE
+   ========================================================================== */
+.termo-responsabilidade .paragrafo-principal {
+    line-height: 1.8;
+    margin-bottom: 20px;
+}
+.termo-responsabilidade .paragrafo-legal {
+    text-align: justify;
+    line-height: 1.6;
+    font-size: 10pt;
+    margin-bottom: 15px;
+}
+.termo-responsabilidade .data-local {
+    text-align: center;
+    margin: 40px 0;
+}
+
+/* ==========================================================================
+   ESTILOS DO RECIBO DE COMPRA
+   ========================================================================== */
+.recibo-compra .info-bloco {
+    margin-bottom: 20px;
+}
+.recibo-compra .valor-pago {
+    line-height: 1.8;
+}
+.recibo-compra .observacoes {
+    border: 1px solid #000;
+    padding: 15px;
+    margin: 20px 0;
+    min-height: 80px;
+}
+.recibo-compra .observacoes p {
+    margin: 5px 0;
+}
+.recibo-compra .data-local {
+    text-align: center;
+    margin-top: 40px;
+}
+
+/* ==========================================================================
+   ESTILOS DA DECLARAÇÃO
+   ========================================================================== */
+.declaracao .paragrafo-principal {
+    line-height: 1.8;
+    margin-bottom: 20px;
+}
+.declaracao .paragrafo-legal {
+    text-align: justify;
+    line-height: 1.7;
+    font-size: 10pt;
+}
+.declaracao .data-local {
+    text-align: center;
+    margin: 40px 0;
+}
+.declaracao .garantia-obs {
+    margin-top: 50px;
+    border-top: 1px solid black;
+    padding-top: 10px;
+    font-size: 9pt;
+    text-align: justify;
+}
+
+/* ==========================================================================
+   ESTILOS DA PROCURAÇÃO
+   ========================================================================== */
+.procuracao .titulo-procuracao {
+    text-align: center;
+    font-weight: bold;
+    margin: 30px 0;
+    font-size: 14pt;
+    text-decoration: underline;
+}
+.procuracao .secao-parte {
+    border: 1px solid #000;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+.procuracao .secao-parte h3 {
+    margin: 0 0 10px 0;
+    font-size: 12pt;
+}
+.procuracao .outorgados-info {
+    font-size: 10pt;
+    text-align: justify;
+}
+.procuracao .data-local {
+    text-align: left;
+    margin: 30px 0;
+}
+.procuracao .assinatura-block {
+    margin: 0 auto; /* Centralizar assinatura */
+}
+
+
+/* ==========================================================================
+   ESTILOS DA FICHA DE VEÍCULO
+   ========================================================================== */
+.ficha-veiculo .info-principal-veiculo {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    border: 2px solid #000;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+.ficha-veiculo .datas-entrada-saida {
+    position: absolute;
+    top: 1.5cm;
+    right: 2cm;
+    text-align: right;
+    font-size: 10pt;
+}
+.ficha-veiculo .partes-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin: 20px 0;
+}
+.ficha-veiculo .parte-bloco {
+    flex-basis: 32%;
+    border: 1px solid #000;
+    padding: 10px;
+}
+.ficha-veiculo .parte-bloco h3 {
+    background-color: #ccc;
+    text-align: center;
+    margin: -10px -10px 10px -10px;
+    padding: 5px;
+    font-size: 12pt;
+}
+.ficha-veiculo .parte-bloco .field {
+    margin-bottom: 8px;
+}
+.ficha-veiculo .parte-bloco .field span {
+    border-bottom-style: solid;
+    font-size: 9pt;
+}
+.ficha-veiculo .despesas-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+.ficha-veiculo .despesas-tabela th, 
+.ficha-veiculo .despesas-tabela td {
+    border: 1px solid #000;
+    padding: 5px;
+    text-align: left;
+}
+.ficha-veiculo .despesas-tabela th {
+    background-color: #ccc;
+}
+.ficha-veiculo .resumo-financeiro {
+    border: 2px solid #000;
+    padding: 15px;
+}
+.ficha-veiculo .resumo-financeiro h3 {
+    text-align: center;
+    margin: 0 0 15px 0;
+}
+.ficha-veiculo .resumo-financeiro .resumo-linha {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12pt;
+    margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   ESTILOS PARA IMPRESSÃO
+   ========================================================================== */
+@media print {
+    body {
+        background-color: white;
+    }
+    .recibo-a4 {
+        margin: 0;
+        box-shadow: none;
+        width: 100%;
+        min-height: 0;
+        padding: 0;
+    }
+}

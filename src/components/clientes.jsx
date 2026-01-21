@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 // Removida importação do Sidebar pois não estava sendo usada no JSX final ou causaria duplicação se usada no App.jsx
 import ClientModal from './ClientModal';
 import { Plus, Pencil, Trash2, Search, RefreshCw } from 'lucide-react';
+import PrintButton from './PrintButton';
 import { API_BASE_URL } from '../api';
 
 const Clientes = () => {
@@ -164,6 +165,8 @@ const Clientes = () => {
               <Trash2 size={18} />
               Excluir
             </button>
+
+            <PrintButton data={Clientes} type="client" />
           </div>
 
           {/* Barra de Pesquisa */}
