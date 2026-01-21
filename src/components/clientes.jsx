@@ -1,35 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
+/* eslint-disable react/prop-types */
+import { useState, useEffect } from 'react';
+// Removida importação do Sidebar pois não estava sendo usada no JSX final ou causaria duplicação se usada no App.jsx
 import ClientModal from './ClientModal';
 import { Plus, Pencil, Trash2, Search, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../api';
 
-
-
-const Clientes = ({ activeScreen, setActiveScreen }) => {
+const Clientes = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [currentClient, setCurrentClient] = useState(null);
+  
+  // Estados principais
   const [clients, setClients] = useState([]);
+  const [filteredClients, setFilteredClients] = useState([]); // Adicionado estado para filtro
   const [isLoading, setIsLoading] = useState(true);
 
-  // Buscar Clientes
- const fetchClientes = async () => {
+  // --- CARREGAR DADOS DA API ---
+  const fetchClients = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/clientes`);
       if (!response.ok) throw new Error('Erro ao buscar clientes');
       const data = await response.json();
-      setClientes(data);
-      setFilteredClientes(data);
+      setClients(data);
+      setFilteredClients(data); // Inicializa o filtro
     } catch (error) {
       console.error('Erro:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchClients();
   }, []);
+
+  // --- EFEITO DE BUSCA EM TEMPO REAL ---
+  useEffect(() => {
+    const results = clients.filter(client => 
+      (client.nome && client.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.cpf_cnpj && client.cpf_cnpj.includes(searchTerm))
+    );
+    setFilteredClients(results);
+  }, [searchTerm, clients]);
+
+  // --- AÇÕES ---
 
   const handleOpenModal = (client = null) => {
     setCurrentClient(client);
@@ -39,16 +55,19 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
   const handleSaveClient = async (clientData) => {
     try {
         if (currentClient) {
-            // Editar
-            await fetch(`${API_URL}/clientes/${currentClient.id}`, {
+            // Editar (PUT)
+            await fetch(`${API_BASE_URL}/clientes/${currentClient.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientData)
             });
-            setClients(clients.map(c => c.id === currentClient.id ? { ...clientData, id: c.id } : c));
+            
+            // Atualiza a lista localmente
+            const updatedList = clients.map(c => c.id === currentClient.id ? { ...clientData, id: c.id } : c);
+            setClients(updatedList);
         } else {
-            // Criar
-            const res = await fetch(`${API_URL}/clientes`, {
+            // Criar (POST)
+            const res = await fetch(`${API_BASE_URL}/clientes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientData)
@@ -60,19 +79,27 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
         setCurrentClient(null);
         setSelectedClientId(null);
     } catch (error) {
+        console.error("Erro ao salvar:", error);
         alert("Erro ao salvar cliente.");
     }
   };
 
   const handleDeleteClient = async () => {
     if (!selectedClientId) return;
+    // eslint-disable-next-line no-restricted-globals
     if (confirm('Tem certeza que deseja excluir o cliente selecionado?')) {
       try {
-          await fetch(`${API_URL}/clientes/${selectedClientId}`, { method: 'DELETE' });
+          const response = await fetch(`${API_BASE_URL}/clientes/${selectedClientId}`, { method: 'DELETE' });
+          
+          if (!response.ok) {
+             throw new Error('Falha ao excluir no servidor');
+          }
+
           setClients(clients.filter(c => c.id !== selectedClientId));
           setSelectedClientId(null);
       } catch (error) {
-          alert("Erro ao excluir cliente.");
+          console.error("Erro ao excluir:", error);
+          alert("Erro ao excluir cliente. Verifique se ele não possui vínculos.");
       }
     }
   };
@@ -83,17 +110,7 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
     handleOpenModal(clientToEdit);
   };
 
-  // ... (O restante do código de renderização/HTML permanece IGUAL ao anterior)
-  // Certifique-se apenas de usar a variável `clients` filtrada abaixo:
-  
-  const filteredClients = clients.filter(client => 
-    client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.cpf_cnpj.includes(searchTerm)
-  );
-
   return (
-    // ... Copie o retorno do JSX do código anterior de Clientes.jsx
-    // Apenas certifique-se de que os botões chamam as funções acima (handleSaveClient, handleDeleteClient)
     <div className="flex h-screen bg-gray-100">
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header Superior */}
@@ -186,43 +203,47 @@ const Clientes = ({ activeScreen, setActiveScreen }) => {
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                     <tr><td colSpan="6" className="p-4 text-center">Carregando clientes...</td></tr>
-                ) : filteredClients.map((client) => {
-                  const isSelected = selectedClientId === client.id;
-                  return (
-                    <tr 
-                      key={client.id} 
-                      onClick={() => setSelectedClientId(isSelected ? null : client.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <td className="px-4 py-4 text-center">
-                        <input 
-                          type="radio" 
-                          name="clientSelect"
-                          checked={isSelected}
-                          onChange={() => setSelectedClientId(client.id)}
-                          className="accent-[#D80000] w-4 h-4"
-                        />
-                      </td>
-                      <td className={`px-6 py-4 font-medium ${isSelected ? 'text-[#D80000]' : 'text-gray-800'}`}>
-                        {client.nome}
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{client.cpf_cnpj}</td>
-                      <td className="px-6 py-4 text-gray-600">{client.cidade}</td>
-                      <td className="px-6 py-4 text-gray-600">{client.telefone}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            client.tipo === 'PJ' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : 'bg-green-100 text-green-700'
-                        }`}>
-                            {client.tipo}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                ) : filteredClients.length === 0 ? (
+                    <tr><td colSpan="6" className="p-4 text-center text-gray-400">Nenhum cliente encontrado.</td></tr>
+                ) : (
+                  filteredClients.map((client) => {
+                    const isSelected = selectedClientId === client.id;
+                    return (
+                      <tr 
+                        key={client.id} 
+                        onClick={() => setSelectedClientId(isSelected ? null : client.id)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <td className="px-4 py-4 text-center">
+                          <input 
+                            type="radio" 
+                            name="clientSelect"
+                            checked={isSelected}
+                            onChange={() => setSelectedClientId(client.id)}
+                            className="accent-[#D80000] w-4 h-4"
+                          />
+                        </td>
+                        <td className={`px-6 py-4 font-medium ${isSelected ? 'text-[#D80000]' : 'text-gray-800'}`}>
+                          {client.nome}
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">{client.cpf_cnpj}</td>
+                        <td className="px-6 py-4 text-gray-600">{client.cidade}</td>
+                        <td className="px-6 py-4 text-gray-600">{client.telefone}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              client.tipo === 'PJ' 
+                              ? 'bg-blue-100 text-blue-700' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                              {client.tipo}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
