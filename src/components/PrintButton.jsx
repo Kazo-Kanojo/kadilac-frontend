@@ -5,7 +5,7 @@ const PrintButton = ({ data, type }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Lista de documentos disponíveis por tipo
+  // Lista de documentos disponíveis
   const documents = {
     client: [
       { name: 'Procuração', file: 'procurcao.html' },
@@ -21,7 +21,6 @@ const PrintButton = ({ data, type }) => {
 
   const availableDocs = documents[type] || [];
 
-  // Fecha o dropdown se clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -34,58 +33,88 @@ const PrintButton = ({ data, type }) => {
 
   const handlePrint = async (filename) => {
     try {
-      // 1. Busca o template HTML na pasta public/templates
       const response = await fetch(`/templates/${filename}`);
-      if (!response.ok) throw new Error('Modelo não encontrado');
+      if (!response.ok) throw new Error('Modelo de documento não encontrado na pasta public/templates');
       let htmlContent = await response.text();
 
-      // 2. Mapeamento de dados (Substitua conforme seus campos do banco)
-      // Ajuste as chaves (ex: [NOME]) para bater com o que está no seu HTML
-      const replacements = {
-        // Dados do Cliente
-        '[NOME]': data.name || '',
-        '[CPF]': data.cpf || '',
-        '[RG]': data.rg || '',
-        '[ENDERECO]': data.address || '',
-        '[NUMERO]': data.number || '',
-        '[BAIRRO]': data.neighborhood || '',
-        '[CIDADE]': data.city || '',
-        '[TELEFONE]': data.phone || '',
-        
-        // Dados do Veículo
-        '[MODELO]': data.model || '',
-        '[MARCA]': data.brand || '',
-        '[PLACA]': data.plate || '',
-        '[CHASSI]': data.chassis || '',
-        '[COR]': data.color || '',
-        '[ANO]': data.year || '',
-        '[RENAVAM]': data.renavam || '',
-        '[PRECO]': data.price || '',
-        
-        // Data atual
-        '[DATA_HOJE]': new Date().toLocaleDateString('pt-BR')
+      // Formatação de valores monetários
+      const formatCurrency = (val) => {
+        return val ? Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
       };
 
-      // 3. Substitui as variáveis no HTML
+      // 1. MAPEAMENTO DE DADOS (Corrigido para Português)
+      // As chaves à esquerda são o que está no seu HTML (ex: [NOME])
+      // Os valores à direita são o que vem do seu banco de dados (ex: data.nome)
+      const replacements = {
+        // --- DADOS DO CLIENTE ---
+        '\\[NOME\\]': data.nome || data.name || '____________________',
+        '\\[CPF\\]': data.cpf || '____________________',
+        '\\[RG\\]': data.rg || '____________________',
+        '\\[ENDERECO\\]': data.endereco || data.address || '____________________',
+        '\\[NUMERO\\]': data.numero || data.number || '___',
+        '\\[BAIRRO\\]': data.bairro || data.neighborhood || '____________________',
+        '\\[CIDADE\\]': data.cidade || data.city || '____________________',
+        '\\[TELEFONE\\]': data.telefone || data.phone || '____________________',
+        
+        // --- DADOS DO VEÍCULO ---
+        '\\[MODELO\\]': (data.modelo || '').toUpperCase(),
+        '\\[MARCA\\]': (data.marca || '').toUpperCase(), 
+        '\\[PLACA\\]': (data.placa || '').toUpperCase(),
+        '\\[CHASSI\\]': data.chassis || data.chassi || '____________________',
+        '\\[COR\\]': data.cor || '__________',
+        '\\[ANO\\]': data.ano || '____',
+        '\\[RENAVAM\\]': data.renavam || '____________________',
+        '\\[COMBUSTIVEL\\]': data.combustivel || '__________',
+        
+        // --- FINANCEIRO ---
+        '\\[PRECO\\]': formatCurrency(data.valor || data.price),
+        '\\[VALOR\\]': formatCurrency(data.valor || data.price), // Caso use [VALOR] no html
+        
+        // --- OUTROS ---
+        '\\[DATA_HOJE\\]': new Date().toLocaleDateString('pt-BR'),
+        '\\[CIDADE_LOJA\\]': 'Cotia' // Exemplo fixo
+      };
+
+      // 2. SUBSTITUIÇÃO
+      // Usamos replace com RegExp global para trocar todas as ocorrências
       Object.keys(replacements).forEach(key => {
-        const regex = new RegExp(key.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), 'g');
+        const regex = new RegExp(key, 'g'); // A chave já tem os escapes para regex
         htmlContent = htmlContent.replace(regex, replacements[key]);
       });
 
-      // 4. Abre uma nova janela para impressão
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
+      // 3. INJEÇÃO DE SCRIPT DE AUTO-IMPRESSÃO
+      // Isso garante que a janela só imprima depois de carregar tudo
+      const autoPrintScript = `
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500); // Pequeno delay para garantir renderização
+          };
+        </script>
+      `;
       
-      // Aguarda carregar e chama a impressão
-      printWindow.onload = () => {
-        printWindow.focus();
-        printWindow.print();
-      };
+      // Adiciona o script antes do fim do body
+      if (htmlContent.includes('</body>')) {
+        htmlContent = htmlContent.replace('</body>', `${autoPrintScript}</body>`);
+      } else {
+        htmlContent += autoPrintScript;
+      }
+
+      // 4. ABERTURA DA JANELA
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close(); // Importante: finaliza o stream de escrita
+      } else {
+        alert("Pop-up bloqueado. Por favor, permita pop-ups para este site.");
+      }
 
     } catch (error) {
       console.error("Erro ao gerar documento:", error);
-      alert("Erro ao gerar o documento. Verifique se o modelo existe.");
+      alert("Erro ao abrir o modelo. Verifique se o arquivo HTML existe em 'public/templates/'.");
     }
     setIsOpen(false);
   };
@@ -94,26 +123,26 @@ const PrintButton = ({ data, type }) => {
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+        className="flex flex-col items-center justify-center p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors group"
         title="Gerar Documento"
       >
-        <Printer size={20} />
+        <Printer size={20} className="mb-1"/>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+        <div className="absolute right-0 bottom-full mb-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 animate-fade-in">
           <div className="py-1" role="menu">
-            <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-              Imprimir Documento
+            <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b">
+              Selecionar Documento
             </div>
             {availableDocs.map((doc, index) => (
               <button
                 key={index}
                 onClick={() => handlePrint(doc.file)}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-3 border-b last:border-0 transition-colors"
                 role="menuitem"
               >
-                <FileText size={14} />
+                <FileText size={16} />
                 {doc.name}
               </button>
             ))}
