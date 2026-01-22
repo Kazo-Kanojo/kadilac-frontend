@@ -1,33 +1,34 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-// Removida importação do Sidebar pois não estava sendo usada no JSX final ou causaria duplicação se usada no App.jsx
+import { Search, UserPlus, Edit, Trash2, User, Phone, MapPin, History, Car, DollarSign, ChevronDown, Calendar, Mail } from 'lucide-react';
 import ClientModal from './ClientModal';
-import { Plus, Pencil, Trash2, Search, RefreshCw } from 'lucide-react';
-import PrintButton from './PrintButton';
 import { API_BASE_URL } from '../api';
 
 const Clientes = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState(null);
-  const [currentClient, setCurrentClient] = useState(null);
-  
-  // Estados principais
+  // Estados de Dados
   const [clients, setClients] = useState([]);
-  const [filteredClients, setFilteredClients] = useState([]); // Adicionado estado para filtro
-  const [isLoading, setIsLoading] = useState(true);
+  const [filteredClients, setFilteredClients] = useState([]);
+  const [clientHistory, setClientHistory] = useState([]); // Histórico de compras do cliente selecionado
 
-  // --- CARREGAR DADOS DA API ---
+  // Estados de Interface
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedClient, setSelectedClient] = useState(null); // Cliente selecionado para o painel inferior
+  const [activeTab, setActiveTab] = useState('dados'); // Abas do painel inferior ('dados' ou 'historico')
+
+  // Estados do Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('create'); // 'create' ou 'edit'
+
+  // --- CARREGAMENTO INICIAL ---
   const fetchClients = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/clientes`);
-      if (!response.ok) throw new Error('Erro ao buscar clientes');
       const data = await response.json();
       setClients(data);
-      setFilteredClients(data); // Inicializa o filtro
+      setFilteredClients(data);
     } catch (error) {
-      console.error('Erro:', error);
+      console.error("Erro ao carregar clientes:", error);
     } finally {
       setIsLoading(false);
     }
@@ -37,227 +38,305 @@ const Clientes = () => {
     fetchClients();
   }, []);
 
-  // --- EFEITO DE BUSCA EM TEMPO REAL ---
+  // --- CARREGAR HISTÓRICO AO SELECIONAR CLIENTE ---
   useEffect(() => {
-    const results = clients.filter(client => 
-      (client.nome && client.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (client.cpf_cnpj && client.cpf_cnpj.includes(searchTerm))
+    if (selectedClient && activeTab === 'historico') {
+        const fetchHistory = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/clientes/${selectedClient.id}/vendas`);
+                if(res.ok) {
+                    const data = await res.json();
+                    setClientHistory(data);
+                }
+            } catch (error) {
+                console.error("Erro ao buscar histórico", error);
+            }
+        };
+        fetchHistory();
+    }
+  }, [selectedClient, activeTab]);
+
+  // --- FILTRO DE BUSCA ---
+  useEffect(() => {
+    const lowerTerm = searchTerm.toLowerCase();
+    const filtered = clients.filter(client => 
+      client.nome.toLowerCase().includes(lowerTerm) ||
+      client.cpf_cnpj.includes(searchTerm) || 
+      (client.telefone && client.telefone.includes(searchTerm))
     );
-    setFilteredClients(results);
+    setFilteredClients(filtered);
   }, [searchTerm, clients]);
 
-  // --- AÇÕES ---
+  // --- HANDLERS ---
+  const handleSelectClient = (client) => {
+      setSelectedClient(client);
+      setActiveTab('dados'); // Reseta para a aba de dados ao trocar de cliente
+  };
 
-  const handleOpenModal = (client = null) => {
-    setCurrentClient(client);
+  const handleNewClient = () => {
+    setSelectedClient(null); // Fecha o painel de baixo se estiver aberto
+    setModalMode('create');
     setIsModalOpen(true);
   };
 
-  const handleSaveClient = async (clientData) => {
-    try {
-        if (currentClient) {
-            // Editar (PUT)
-            await fetch(`${API_BASE_URL}/clientes/${currentClient.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(clientData)
-            });
-            
-            // Atualiza a lista localmente
-            const updatedList = clients.map(c => c.id === currentClient.id ? { ...clientData, id: c.id } : c);
-            setClients(updatedList);
-        } else {
-            // Criar (POST)
-            const res = await fetch(`${API_BASE_URL}/clientes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(clientData)
-            });
-            const newClient = await res.json();
-            setClients([newClient, ...clients]);
-        }
-        setIsModalOpen(false);
-        setCurrentClient(null);
-        setSelectedClientId(null);
-    } catch (error) {
-        console.error("Erro ao salvar:", error);
-        alert("Erro ao salvar cliente.");
-    }
+  const handleEditClient = () => {
+    if (!selectedClient) return alert("Selecione um cliente para editar.");
+    setModalMode('edit');
+    setIsModalOpen(true);
   };
 
   const handleDeleteClient = async () => {
-    if (!selectedClientId) return;
+    if (!selectedClient) return;
     // eslint-disable-next-line no-restricted-globals
-    if (confirm('Tem certeza que deseja excluir o cliente selecionado?')) {
+    if (confirm(`Tem certeza que deseja excluir ${selectedClient.nome}?`)) {
       try {
-          const response = await fetch(`${API_BASE_URL}/clientes/${selectedClientId}`, { method: 'DELETE' });
-          
-          if (!response.ok) {
-             throw new Error('Falha ao excluir no servidor');
-          }
-
-          setClients(clients.filter(c => c.id !== selectedClientId));
-          setSelectedClientId(null);
+        await fetch(`${API_BASE_URL}/clientes/${selectedClient.id}`, { method: 'DELETE' });
+        fetchClients();
+        setSelectedClient(null);
       } catch (error) {
-          console.error("Erro ao excluir:", error);
-          alert("Erro ao excluir cliente. Verifique se ele não possui vínculos.");
+        alert("Erro ao excluir cliente.");
       }
     }
   };
 
-  const handleEditClient = () => {
-    if (!selectedClientId) return;
-    const clientToEdit = clients.find(c => c.id === selectedClientId);
-    handleOpenModal(clientToEdit);
+  const handleSaveClient = async (clientData) => {
+    const method = modalMode === 'create' ? 'POST' : 'PUT';
+    const url = modalMode === 'create' 
+      ? `${API_BASE_URL}/clientes` 
+      : `${API_BASE_URL}/clientes/${selectedClient.id}`;
+
+    try {
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clientData)
+      });
+      fetchClients();
+      setIsModalOpen(false);
+      
+      // Se estava editando, atualiza os dados do painel selecionado também
+      if (modalMode === 'edit') {
+          setSelectedClient({...selectedClient, ...clientData});
+      }
+    } catch (error) {
+      alert("Erro ao salvar cliente.");
+    }
+  };
+
+  // Função auxiliar para formatar data (Apenas Data)
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    // timeZone: 'UTC' é importante para evitar que o dia volte 1 devido ao fuso
+    return new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Header Superior */}
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center flex-shrink-0">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Gerenciar Clientes</h1>
-            <p className="text-sm text-gray-500">Base de contatos e parceiros</p>
-          </div>
-          <div className="flex items-center gap-3">
-             <div className="bg-gray-100 px-3 py-1 rounded-md text-xs font-medium text-gray-600">
-                Total: {clients.length}
-             </div>
-          </div>
-        </header>
+    <div className="flex flex-col h-full animate-fade-in relative bg-gray-50">
+      
+      {/* BARRA DE FERRAMENTAS */}
+      <div className="bg-white p-2 rounded-t-lg shadow-sm border-b border-gray-200 flex flex-wrap gap-2 items-center mb-2">
+        <button 
+            onClick={handleNewClient}
+            className="flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all group min-w-[80px]"
+        >
+            <UserPlus size={24} className="text-blue-600 mb-1 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-gray-600">Novo</span>
+        </button>
 
-        {/* Barra de Ferramentas (Toolbar) */}
-        <div className="bg-white px-8 py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center flex-shrink-0 shadow-sm z-10">
-          
-          {/* Botões de Ação */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <button 
-              onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 bg-[#D80000] hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm font-medium"
-            >
-              <Plus size={18} />
-              Novo
-            </button>
-            
-            <button 
-              onClick={handleEditClient}
-              disabled={!selectedClientId}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border shadow-sm text-sm font-medium ${
-                selectedClientId 
-                  ? 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50' 
-                  : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <Pencil size={18} />
-              Editar
-            </button>
+        <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
 
-            <button 
-              onClick={handleDeleteClient}
-              disabled={!selectedClientId}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border shadow-sm text-sm font-medium ${
-                selectedClientId 
-                  ? 'bg-white border-red-200 text-red-600 hover:bg-red-50' 
-                  : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <Trash2 size={18} />
-              Excluir
-            </button>
+        <button 
+            onClick={handleEditClient} 
+            disabled={!selectedClient}
+            className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedClient ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-200'}`}
+        >
+            <Edit size={24} className="text-orange-500 mb-1 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-gray-600">Editar</span>
+        </button>
 
-            <PrintButton data={Clientes} type="client" />
-          </div>
+        <button 
+            onClick={handleDeleteClient} 
+            disabled={!selectedClient}
+            className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedClient ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-200'}`}
+        >
+            <Trash2 size={24} className="text-red-500 mb-1 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-gray-600">Excluir</span>
+        </button>
 
-          {/* Barra de Pesquisa */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <div className="relative group w-full md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#D80000] transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder="Pesquisar por nome, CPF/CNPJ..." 
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000] focus:border-transparent transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <button onClick={fetchClients} className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600" title="Atualizar">
-                <RefreshCw size={18} />
-            </button>
-          </div>
+        <div className="w-full md:flex-1"></div>
+
+        <div className="relative w-full md:w-64 mt-2 md:mt-0">
+          <input
+            type="text"
+            placeholder="Buscar por nome, CPF ou tel..."
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
         </div>
+      </div>
 
-        {/* Tabela */}
-        <div className="flex-1 overflow-auto p-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b border-gray-200">
+      {/* LISTA DE CLIENTES */}
+      <div className="bg-white rounded shadow-sm overflow-hidden flex-1 border border-gray-200 relative">
+        <div className="absolute inset-0 overflow-auto">
+            <table className="w-full text-left text-sm min-w-[800px]">
+            <thead className="bg-gray-100 text-gray-600 sticky top-0 font-semibold shadow-sm z-10">
                 <tr>
-                  <th className="w-12 px-4 py-3 text-center">
-                    {/* Checkbox Cabeçalho (Opcional) */}
-                  </th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Nome / Razão Social</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Documento</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Cidade</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Telefone</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</th>
+                <th className="p-3 border-b">Nome</th>
+                <th className="p-3 border-b">CPF/CNPJ</th>
+                <th className="p-3 border-b">Telefone</th>
+                <th className="p-3 border-b">Cidade/UF</th>
+                <th className="p-3 border-b">E-mail</th>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+            </thead>
+            <tbody className="divide-y">
                 {isLoading ? (
-                    <tr><td colSpan="6" className="p-4 text-center">Carregando clientes...</td></tr>
+                    <tr><td colSpan="5" className="p-4 text-center">Carregando clientes...</td></tr>
                 ) : filteredClients.length === 0 ? (
-                    <tr><td colSpan="6" className="p-4 text-center text-gray-400">Nenhum cliente encontrado.</td></tr>
+                    <tr><td colSpan="5" className="p-4 text-center text-gray-400">Nenhum cliente encontrado.</td></tr>
                 ) : (
-                  filteredClients.map((client) => {
-                    const isSelected = selectedClientId === client.id;
-                    return (
-                      <tr 
+                    filteredClients.map((client) => (
+                    <tr 
                         key={client.id} 
-                        onClick={() => setSelectedClientId(isSelected ? null : client.id)}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <td className="px-4 py-4 text-center">
-                          <input 
-                            type="radio" 
-                            name="clientSelect"
-                            checked={isSelected}
-                            onChange={() => setSelectedClientId(client.id)}
-                            className="accent-[#D80000] w-4 h-4"
-                          />
-                        </td>
-                        <td className={`px-6 py-4 font-medium ${isSelected ? 'text-[#D80000]' : 'text-gray-800'}`}>
-                          {client.nome}
-                        </td>
-                        <td className="px-6 py-4 text-gray-600">{client.cpf_cnpj}</td>
-                        <td className="px-6 py-4 text-gray-600">{client.cidade}</td>
-                        <td className="px-6 py-4 text-gray-600">{client.telefone}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              client.tipo === 'PJ' 
-                              ? 'bg-blue-100 text-blue-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                              {client.tipo}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
+                        onClick={() => handleSelectClient(client)}
+                        className={`cursor-pointer transition-colors ${selectedClient?.id === client.id ? 'bg-blue-100 text-blue-900 font-medium' : 'hover:bg-blue-50 text-gray-700'}`}
+                    >
+                        <td className="p-3 font-bold">{client.nome}</td>
+                        <td className="p-3">{client.cpf_cnpj}</td>
+                        <td className="p-3">{client.telefone}</td>
+                        <td className="p-3">{client.cidade} - {client.estado}</td>
+                        <td className="p-3 text-gray-500">{client.email || '-'}</td>
+                    </tr>
+                    ))
                 )}
-              </tbody>
+            </tbody>
             </table>
-          </div>
         </div>
-      </main>
+      </div>
 
+      {/* PAINEL INFERIOR (ESTILO ESTOQUE) */}
+      {selectedClient && (
+        <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-blue-500 animate-slide-up shadow-inner mt-2 z-20">
+            {/* Abas */}
+            <div className="flex border-b bg-gray-100 overflow-x-auto">
+                <button 
+                    onClick={() => setActiveTab('dados')}
+                    className={`px-6 py-3 text-sm font-bold border-r border-gray-300 flex items-center gap-2 whitespace-nowrap ${activeTab === 'dados' ? 'bg-white text-blue-700 border-t-2 border-t-blue-700' : 'text-gray-500 hover:bg-gray-200'}`}
+                >
+                    <User size={16}/> Dados Pessoais
+                </button>
+                <button 
+                    onClick={() => setActiveTab('historico')}
+                    className={`px-6 py-3 text-sm font-bold border-r border-gray-300 flex items-center gap-2 whitespace-nowrap ${activeTab === 'historico' ? 'bg-white text-blue-700 border-t-2 border-t-blue-700' : 'text-gray-500 hover:bg-gray-200'}`}
+                >
+                    <History size={16}/> Histórico de Negócios
+                </button>
+                <div className="flex-1 flex justify-end items-center pr-4 bg-gray-100 min-w-[50px]">
+                    <button onClick={() => setSelectedClient(null)} className="text-gray-500 hover:text-red-600"><ChevronDown/></button>
+                </div>
+            </div>
+
+            {/* Conteúdo do Painel */}
+            <div className="p-4 overflow-auto flex-1 bg-white max-h-[40vh] md:max-h-none">
+                
+                {/* ABA DADOS PESSOAIS */}
+                {activeTab === 'dados' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-gray-500 font-bold border-b pb-1">
+                                <User size={16}/> Identificação
+                            </div>
+                            <p><span className="text-gray-500 w-24 inline-block">Nome:</span> <strong className="text-lg">{selectedClient.nome}</strong></p>
+                            <p><span className="text-gray-500 w-24 inline-block">CPF/CNPJ:</span> {selectedClient.cpf_cnpj}</p>
+                            <p><span className="text-gray-500 w-24 inline-block">RG:</span> {selectedClient.rg || '-'}</p>
+                            {/* DATA DE NASCIMENTO FORMATADA AQUI */}
+                            <p><span className="text-gray-500 w-24 inline-block">Nascimento:</span> {formatDate(selectedClient.data_nascimento)}</p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-gray-500 font-bold border-b pb-1">
+                                <Phone size={16}/> Contato
+                            </div>
+                            <p><span className="text-gray-500 w-24 inline-block">Telefone:</span> {selectedClient.telefone}</p>
+                            <p className="flex items-center gap-1">
+                                <span className="text-gray-500 w-24 inline-block">Email:</span> 
+                                {selectedClient.email ? (
+                                    <a href={`mailto:${selectedClient.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                                        <Mail size={12}/> {selectedClient.email}
+                                    </a>
+                                ) : '-'}
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-gray-500 font-bold border-b pb-1">
+                                <MapPin size={16}/> Endereço
+                            </div>
+                            <p>{selectedClient.endereco}, {selectedClient.numero}</p>
+                            <p>{selectedClient.bairro}</p>
+                            <p>{selectedClient.cidade} - {selectedClient.estado}</p>
+                            <p className="text-gray-500">CEP: {selectedClient.cep}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* ABA HISTÓRICO DE NEGÓCIOS */}
+                {activeTab === 'historico' && (
+                    <div className="h-full">
+                        {clientHistory.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                <History size={48} className="mb-2 opacity-20"/>
+                                <p>Nenhum negócio realizado com este cliente ainda.</p>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-50 text-gray-600 font-bold sticky top-0">
+                                    <tr>
+                                        <th className="p-3">Data</th>
+                                        <th className="p-3">Veículo</th>
+                                        <th className="p-3">Placa</th>
+                                        <th className="p-3">Valor Negociado</th>
+                                        <th className="p-3">Pagamento</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {clientHistory.map((sale) => (
+                                        <tr key={sale.id} className="hover:bg-blue-50">
+                                            <td className="p-3 flex items-center gap-2">
+                                                <Calendar size={14} className="text-gray-400"/>
+                                                {formatDate(sale.data_venda)}
+                                            </td>
+                                            <td className="p-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Car size={16} className="text-blue-600"/>
+                                                    <span className="font-bold uppercase">{sale.modelo}</span>
+                                                    <span className="text-xs text-gray-500">({sale.cor})</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-3 font-mono uppercase">{sale.placa}</td>
+                                            <td className="p-3 font-bold text-green-700">R$ {Number(sale.valor_venda).toLocaleString()}</td>
+                                            <td className="p-3 text-xs bg-gray-100 rounded w-fit px-2 py-1 mx-3 inline-block">
+                                                {sale.metodo_pagamento}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                )}
+
+            </div>
+        </div>
+      )}
+
+      {/* MODAL DE CRIAÇÃO/EDIÇÃO */}
       <ClientModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onSave={handleSaveClient}
-        initialData={currentClient}
+        initialData={modalMode === 'edit' ? selectedClient : null}
       />
     </div>
   );

@@ -9,7 +9,7 @@
 <body>
     <div class="recibo-a4 recibo-compra">
         <header class="doc-header">
-            <h1>S & O COMÉRCIO DE VEÍCULOS EIRELI</h1>
+            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
             <p class="separador">***</p>
             <h2>Recibo de Compra</h2>
             <p class="separador">***</p>
@@ -17,52 +17,88 @@
 
         <main>
             <div class="info-bloco">
-                <p>A S&O COMÉRCIO DE VEÍCULOS EIRELI, CNPJ: <strong>04.573.558/0001-17</strong>, I.E.: <strong>720.065.099.117</strong>, com domicílio em: <strong>AV. PRES. TANCREDO NEVES, 2.313</strong>, Bairro: <strong>CENTRO</strong>, Cidade: <strong>VARGEM GRANDE PAULISTA</strong>, Estado: <strong>SP</strong> CEP: <strong>06730-000</strong>,</p>
+                <p>A <strong>{{LOJA_RAZAO}}</strong>, CNPJ: <strong>{{LOJA_CNPJ}}</strong>, estabelecida em: <strong>{{LOJA_ENDERECO}}</strong> - {{LOJA_CIDADE}}.</p>
             </div>
+            
             <div class="info-bloco">
-                <p>pagamos a <strong>ROSEANE ESTEVAN DOS SANTOS</strong>, CNPF: <strong>436.745.368-54</strong>, R.G.: ______________, com domicílio em: __________________________, Bairro: ______________, Cidade: <strong>SAO PAULO</strong>, Estado: <strong>SP</strong>, CEP: ______________, Fone(s): ______________.</p>
+                <p>
+                    Comprou de <strong>{{CLIENTE_NOME}}</strong>, CPF: <strong>{{CLIENTE_CPF}}</strong>, RG: <strong>{{CLIENTE_RG}}</strong>, residente em <strong>{{CLIENTE_ENDERECO}}</strong>.
+                </p>
             </div>
 
-            <p class="valor-pago">
-                a importância de <strong>R$ 53.150,00</strong> referente a compra do veículo abaixo descrito no estado que se encontra.
-            </p>
+            <p>O veículo abaixo descrito:</p>
 
-            <section class="info-veiculo">
-                <div class="field full"><label>Veículo:</label><span>HYUNDAI/ HB20 1.OM EVOLUTI</span></div>
-                <div class="field half"><label>Ano:</label><span>2020/2020</span></div>
-                <div class="field half"><label>Cor:</label><span>Prata</span></div>
-                <div class="field half"><label>Combustível:</label><span>Bic</span></div>
-                <div class="field half"><label>Placa:</label><span>QXX-8772</span></div>
-                <div class="field full"><label>Renavan:</label><span>1227163409</span></div>
-                <div class="field full"><label>Chassi:</label><span>9BHCP51AALP074241</span></div>
-                <div class="field full"><label>Certificado:</label><span>254253757057</span></div>
+            <section class="veiculo-box">
+                <div class="field full"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
+                <div class="field half"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
+                <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
+                <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
+                <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
+                <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
+                <div class="field full"><label>Certificado:</label><span>{{VEICULO_CERTIFICADO}}</span></div>
             </section>
             
             <div class="observacoes">
-                <p>com ref ao pagamento este veiculo entrou como entrada na troca de uma montana ano 2015</p>
-                <p>horas 18:00</p>
-                <p>referente as 3 multas em aberto o cliente ira pagar no prazo de 30 dias.</p>
+                <p>Pagamento no valor de {{VEICULO_PRECO}}.</p>
+                <p>Obs: {{OBSERVACOES}}</p>
+                <p>O veículo é entregue livre e desembaraçado de quaisquer ônus, multas ou restrições até a presente data.</p>
             </div>
 
-            <p>A compra deste veículo foi feita livre e desembaraçadamente de quaisquer ônus.</p>
-            <p>Para maior clareza, firmo a presente recibo.</p>
-
-            <p class="data-local">VARGEM GRANDE PAULISTA, 29 de Setembro de 2025.</p>
+            <p class="data-local">{{LOJA_CIDADE}}, {{DATA_ATUAL}}.</p>
 
             <footer>
                 <div class="assinaturas">
                     <div class="assinatura-block">
                         <div class="linha-assinatura"></div>
-                        <p>S&O COMÉRCIO DE VEÍCULOS EIRELI</p>
+                        <p style="text-transform: uppercase;">{{LOJA_RAZAO}}</p>
+                        <p>Comprador (Loja)</p>
                     </div>
                     <div class="assinatura-block">
                         <div class="linha-assinatura"></div>
-                        <p>ROSEANE ESTEVAN DOS SANTOS</p>
-                        <p class="acordo">Estou de pleno acordo com as condições acima</p>
+                        <p style="text-transform: uppercase;">{{CLIENTE_NOME}}</p>
+                        <p>Vendedor (Cliente)</p>
                     </div>
                 </div>
             </footer>
         </main>
     </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const data = JSON.parse(localStorage.getItem('sistema_print_data'));
+            if (!data) return;
+            const formatMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+
+            const replacements = {
+                '{{CLIENTE_NOME}}': data.client?.nome || '',
+                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '',
+                '{{CLIENTE_RG}}': data.client?.rg || '',
+                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '',
+                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
+                '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
+                '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
+                '{{VEICULO_COR}}': data.vehicle?.cor || '',
+                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
+                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
+                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
+                '{{VEICULO_CERTIFICADO}}': data.vehicle?.certificado || '',
+                '{{VEICULO_PRECO}}': formatMoney(data.sale?.price),
+                '{{OBSERVACOES}}': data.sale?.obs || '',
+                '{{LOJA_NOME}}': data.store?.nome_loja || '',
+                '{{LOJA_RAZAO}}': data.store?.razao_social || '',
+                '{{LOJA_CNPJ}}': data.store?.cnpj || '',
+                '{{LOJA_ENDERECO}}': data.store?.endereco || '',
+                '{{LOJA_CIDADE}}': data.store?.cidade || '',
+                '{{DATA_ATUAL}}': data.date
+            };
+
+            let html = document.body.innerHTML;
+            for (const [key, val] of Object.entries(replacements)) {
+                html = html.replace(new RegExp(key, 'g'), val);
+            }
+            document.body.innerHTML = html;
+            setTimeout(() => window.print(), 500);
+        });
+    </script>
 </body>
 </html>

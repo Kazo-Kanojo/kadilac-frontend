@@ -3,84 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recibo de Venda de Veículo</title>
+    <title>Recibo de Venda</title>
     <link rel="stylesheet" href="../style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="recibo-a4">
         <header>
-            <h1>S & O COMÉRCIO DE VEÍCULOS EIRELI</h1>
+            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
+            <p style="font-size: 12px;">{{LOJA_ENDERECO}} - {{LOJA_CIDADE}} | Tel: {{LOJA_TELEFONE}}</p>
             <p class="subtitulo">*** Recibo de Venda ***</p>
         </header>
         
         <div class="valor-box">
-            R$ 18.000,00
+            {{VEICULO_PRECO}}
         </div>
 
         <main>
             <p class="paragrafo-principal">
-                Recebemos de <strong>GUSTAVO VENANCIO DA SILVA</strong>, CNPJ/CPF: <strong>493.376.758-03</strong>, R.G.: <strong>386956145</strong>, com domicílio em: <strong>ESTRADA DA BONANZA</strong>, Bairro: <strong>CAPELA SAO PEDRO</strong>, Cidade: <strong>VARGEM GRANDE PAULISTA</strong>, Estado: <strong>SP</strong>, CEP: <strong>06730-000</strong>, Fone(s): <strong>(11) 7760-0986</strong>, <strong>(11) 7760-0986</strong>.
+                Recebemos de <strong>{{CLIENTE_NOME}}</strong>, CPF/CNPJ: <strong>{{CLIENTE_CPF}}</strong>, R.G.: <strong>{{CLIENTE_RG}}</strong>, residente em: <strong>{{CLIENTE_ENDERECO}}</strong>, Telefone: <strong>{{CLIENTE_TELEFONE}}</strong>.
             </p>
+            
             <p class="paragrafo-principal">
-                a importância de (<strong>R$ 18.000,00</strong>) referente ao pagamento do veículo abaixo descrito, no estado em que se encontra conforme examinado pelo comprador.
+                A importância supramencionada referente à venda do veículo abaixo descrito:
             </p>
 
-            <section class="info-veiculo">
-                <div class="field full">
-                    <label>Veículo:</label>
-                    <span>Palio fire flex</span>
+            <section class="veiculo-info">
+                <div class="veiculo-detalhes">
+                    <p><strong>Veículo:</strong> {{VEICULO_MARCA}} {{VEICULO_MODELO}}</p>
+                    <p><strong>Placa:</strong> {{VEICULO_PLACA}} / <strong>Cor:</strong> {{VEICULO_COR}}</p>
+                    <p><strong>Ano:</strong> {{VEICULO_ANO}}</p>
+                    <p><strong>Renavam:</strong> {{VEICULO_RENAVAM}}</p>
+                    <p><strong>Chassi:</strong> {{VEICULO_CHASSI}}</p>
                 </div>
-                <div class="field half">
-                    <label>Ano:</label>
-                    <span>2007/2008</span>
-                </div>
-                <div class="field half">
-                    <label>Cor:</label>
-                    <span>Prata</span>
-                </div>
-                <div class="field half">
-                    <label>Combustível:</label>
-                    <span>Gasolina</span>
-                </div>
-                <div class="field half">
-                    <label>Renavan:</label>
-                    <span>00946571368</span>
-                </div>
-                <div class="field half">
-                    <label>Placa:</label>
-                    <span>APN-6636</span>
-                </div>
-                <div class="field full">
-                    <label>Chassi:</label>
-                    <span>9BD17164G85135774</span>
-                </div>
-                 <div class="field full">
-                    <label>Certificado:</label>
-                    <span></span>
-                </div>
-            </section>
-
-            <section class="observacoes">
-                <p><strong>Observações:</strong></p>
-                <div class="obs-box">
-                    <p>COM REFERENTE AO PAGAMENTO RECEBEMOS COMO ENTRADA UM HB20 ANO 2017 NO VALOR DE $ 39.000,00 E MAIS $ 1.000,00 ATRAVÉS PIX EM CONTA E O SALDO DE $ 24.000,00 ATRAVÉS DO FINANCIAMENTO PELO BANCO SANTANDER TOTALIZANDO O VALOR ACIMA.</p>
-                    <div class="extra-info">
-                        <p><strong>HORAS:</strong> 11:50</p>
-                        <p><strong>KM:</strong> 63956</p>
-                    </div>
-                     <p><strong>OBS. COM REF A TRANSFERENCIA O CLIENTE JA DEIXOU PAGO O VALOR DE $ 800,00</strong></p>
+                
+                <div class="pagamento-info">
+                    <p><strong>Vendedor:</strong> {{VENDEDOR_NOME}}</p>
+                    <p><strong>Observações:</strong> {{OBSERVACOES}}</p>
                 </div>
             </section>
 
             <section class="termos">
                 <p>A venda deste veículo foi feita livre e desembaraçadamente de qualquer ônus, podendo o comprador transferir para o seu nome o certificado de propriedade sem reserva de domínio.</p>
-                <p>Para maior clareza, firmo a presente recibo.</p>
+                <p>Para maior clareza, firmo o presente recibo.</p>
             </section>
 
-            <p class="data-local">VARGEM GRANDE PAULISTA, 11 de Setembro de 2025.</p>
+            <p class="data-local">{{LOJA_CIDADE}}, {{DATA_ATUAL}}.</p>
 
         </main>
 
@@ -88,16 +56,62 @@
             <div class="assinaturas">
                 <div class="assinatura-block">
                     <div class="linha-assinatura"></div>
-                    <p>S&O COMÉRCIO DE VEÍCULOS EIRELI</p>
+                    <p style="text-transform: uppercase;">{{LOJA_RAZAO}}</p>
+                    <p>CNPJ: {{LOJA_CNPJ}}</p>
                 </div>
                 <div class="assinatura-block">
                     <div class="linha-assinatura"></div>
-                    <p>GUSTAVO VENANCIO DA SILVA</p>
-                    <p class="acordo">Estou de pleno acordo com as condições acima</p>
+                    <p style="text-transform: uppercase;">{{CLIENTE_NOME}}</p>
+                    <p>Comprador</p>
                 </div>
             </div>
         </footer>
-
     </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const data = JSON.parse(localStorage.getItem('sistema_print_data'));
+            if (!data) return alert("Erro: Dados não encontrados.");
+
+            const formatMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+
+            const replacements = {
+                '{{CLIENTE_NOME}}': data.client?.nome || '____________________',
+                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '____________________',
+                '{{CLIENTE_RG}}': data.client?.rg || '____________________',
+                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '____________________',
+                '{{CLIENTE_TELEFONE}}': data.client?.telefone || '____________________',
+                
+                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '____________________',
+                '{{VEICULO_MARCA}}': data.vehicle?.marca || '', 
+                '{{VEICULO_PLACA}}': data.vehicle?.placa || '____________________',
+                '{{VEICULO_COR}}': data.vehicle?.cor || '____________________',
+                '{{VEICULO_ANO}}': data.vehicle?.ano || '____________________',
+                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '____________________',
+                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '____________________',
+                '{{VEICULO_PRECO}}': formatMoney(data.sale?.price),
+                
+                '{{VENDEDOR_NOME}}': data.sale?.seller || '____________________',
+                '{{OBSERVACOES}}': data.sale?.obs || '',
+
+                '{{LOJA_NOME}}': data.store?.nome_loja || 'NOME DA LOJA',
+                '{{LOJA_RAZAO}}': data.store?.razao_social || 'RAZÃO SOCIAL',
+                '{{LOJA_CNPJ}}': data.store?.cnpj || 'CNPJ',
+                '{{LOJA_ENDERECO}}': data.store?.endereco || '',
+                '{{LOJA_CIDADE}}': data.store?.cidade || 'Cidade',
+                '{{LOJA_TELEFONE}}': data.store?.telefone || '',
+
+                '{{DATA_ATUAL}}': data.date
+            };
+
+            let html = document.body.innerHTML;
+            for (const [key, val] of Object.entries(replacements)) {
+                html = html.replace(new RegExp(key, 'g'), val);
+            }
+            document.body.innerHTML = html;
+
+            setTimeout(() => window.print(), 500);
+        });
+    </script>
 </body>
 </html>

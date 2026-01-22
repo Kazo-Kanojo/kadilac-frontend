@@ -9,7 +9,7 @@
 <body>
     <div class="recibo-a4 termo-responsabilidade">
         <header class="doc-header">
-            <h1>E DE MORAES VEICULOS LTDA</h1>
+            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
             <p class="separador">***</p>
             <h2>Termo de Responsabilidade</h2>
             <p class="separador">***</p>
@@ -19,74 +19,88 @@
             <div class="field-group">
                 <div class="field" style="flex-basis: 100%;">
                     <label>Eu,</label>
-                    <span class="value">ROSEANE ESTEVAN DOS SANTOS</span>
+                    <span class="value">{{CLIENTE_NOME}}</span>
                 </div>
                 <div class="field half">
-                    <label>CNPF:</label>
-                    <span class="value">436.745.368-54</span>
+                    <label>CPF/CNPJ:</label>
+                    <span class="value">{{CLIENTE_CPF}}</span>
                 </div>
                 <div class="field half">
                     <label>R.G.:</label>
-                    <span class="value"></span>
+                    <span class="value">{{CLIENTE_RG}}</span>
                 </div>
                 <div class="field full">
-                    <label>com domicilio em:</label>
-                    <span class="value"></span>
-                </div>
-                <div class="field full">
-                    <label>Bairro:</label>
-                    <span class="value"></span>
-                </div>
-                <div class="field third">
-                    <label>Cidade:</label>
-                    <span class="value">SAO PAULO</span>
-                </div>
-                <div class="field third">
-                    <label>Estado:</label>
-                    <span class="value">SP</span>
-                </div>
-                <div class="field third">
-                    <label>CEP:</label>
-                    <span class="value"></span>
+                    <label>Endereço:</label>
+                    <span class="value">{{CLIENTE_ENDERECO}}</span>
                 </div>
             </div>
 
-            <p class="paragrafo-principal">
-                Declaro que vendi, nesta data, o veículo abaixo identificado, de minha propriedade livre de qualquer ônus a <strong>S&O COMÉRCIO DE VEÍCULOS EIRELI</strong>, inscrita no CNPJ: <strong>04.573.558/0001-17</strong>.
+            <p class="paragrafo-legal">
+                <strong>DECLARO</strong> para os devidos fins de direito e a quem possa interessar, que nesta data recebi o veículo:
             </p>
 
-            <section class="info-veiculo">
-                <div class="field full"><label>Veículo:</label><span>HYUNDAI/ HB20 1.OM EVOLUTI</span></div>
-                <div class="field half"><label>Ano:</label><span>2020/2020</span></div>
-                <div class="field half"><label>Cor:</label><span>Prata</span></div>
-                <div class="field half"><label>Combustível:</label><span>Bic</span></div>
-                <div class="field half"><label>Placa:</label><span>QXX-8772</span></div>
-                <div class="field full"><label>Renavan:</label><span>1227163409</span></div>
-                <div class="field full"><label>Chassi:</label><span>9BHCP51AALP074241</span></div>
-                <div class="field full"><label>Certificado:</label><span>254253757057</span></div>
+            <section class="veiculo-box">
+                <div class="field full"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
+                <div class="field half"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
+                <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
+                <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
+                <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
+                <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
             </section>
 
             <p class="paragrafo-legal">
-                [cite_start]DECLARO ainda que estou ciente da minha responsabilidade quanto ao valor ora transacionado, que tange a questão civil, criminal e especialmente quanto às multas de de trânsito que eventualmente estiverem incidindo sobre o presente veículo até esta data, multas essas que me comprometo a paga-las, autorizando neste ato e por este instrumento o comprador acima identificado, promover a cobrança com emissão de título de crédito de valor correspondente, com vencimento a vista, podendo leva-lo a protesto e ficando expressamente convencionado que, se o comprador tiver que promover a execução judicial do mencionado título, o seu valor será acrescido de multa de 10%(dez por cento), juros moratórios de 1%(um por cento) ao mês mais a correção monetária com base na variação do índice em vigor na época, sujeitando-se ainda o vendedor, às custas e despesas de ordem processual, mais a verba honorária de 20% (vinte por cento) sobre o valor da condenação. [cite: 22, 23]
-            </p>
-            <p class="paragrafo-legal">
-                [cite_start]No caso de serem as multas quitadas pelo comprador, evitando assim, o perecimento do direito, ficará o mesmo SUB-ROGADO nestes créditos. [cite: 24]
-            </p>
-            <p class="paragrafo-legal">
-                [cite_start]O vendedor, neste ato e por esta melhor forma de direito, nomeia e constitui como seu bastante procurador, o comprador ou representante legal, enquanto subsistir o presente compromisso, visando a prática dos atos específicos e necessários a emissão do referido título de crédito, no valor das multas e seus acréscimos legais, para que possa desempenhar a bom termo o recebimento de seu crédito e o fiel cumprimento do presente instrumento. [cite: 25, 26]
+                Pelo presente termo, assumo total responsabilidade civil e criminal por quaisquer danos causados a terceiros ou infrações de trânsito cometidas com o referido veículo a partir desta data e horário de saída.
             </p>
 
-            <p class="data-local">VARGEM GRANDE PAULISTA, 29 de Setembro de 2025.</p>
+            <p class="data-local">{{LOJA_CIDADE}}, {{DATA_ATUAL}}.</p>
 
             <footer>
                 <div class="assinaturas">
                     <div class="assinatura-block">
                         <div class="linha-assinatura"></div>
-                        <p>ROSEANE ESTEVAN DOS SANTOS</p>
+                        <p style="text-transform: uppercase;">{{LOJA_RAZAO}}</p>
+                        <p>Vendedor</p>
+                    </div>
+                    <div class="assinatura-block">
+                        <div class="linha-assinatura"></div>
+                        <p style="text-transform: uppercase;">{{CLIENTE_NOME}}</p>
+                        <p>Responsável / Comprador</p>
                     </div>
                 </div>
             </footer>
         </main>
     </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const data = JSON.parse(localStorage.getItem('sistema_print_data'));
+            if (!data) return;
+
+            const replacements = {
+                '{{CLIENTE_NOME}}': data.client?.nome || '',
+                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '',
+                '{{CLIENTE_RG}}': data.client?.rg || '',
+                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '',
+                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
+                '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
+                '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
+                '{{VEICULO_COR}}': data.vehicle?.cor || '',
+                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
+                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
+                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
+                '{{LOJA_NOME}}': data.store?.nome_loja || 'LOJA',
+                '{{LOJA_RAZAO}}': data.store?.razao_social || 'RAZÃO SOCIAL',
+                '{{LOJA_CIDADE}}': data.store?.cidade || 'Cidade',
+                '{{DATA_ATUAL}}': data.date
+            };
+
+            let html = document.body.innerHTML;
+            for (const [key, val] of Object.entries(replacements)) {
+                html = html.replace(new RegExp(key, 'g'), val);
+            }
+            document.body.innerHTML = html;
+            setTimeout(() => window.print(), 500);
+        });
+    </script>
 </body>
 </html>

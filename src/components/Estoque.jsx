@@ -1,40 +1,80 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel } from 'lucide-react';
+import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel, Wrench, DollarSign, TrendingUp, FileText } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
-import PrintButton from './PrintButton';
+import DespesasModal from './DespesasModal';
 import { API_BASE_URL } from '../api';
 
 const Estoque = () => {
-  const [filteredVehicles, setFilteredVehicles] = useState([]);
+  // Estados de Dados
   const [vehicles, setVehicles] = useState([]); 
+  const [filteredVehicles, setFilteredVehicles] = useState([]);
+  const [clients, setClients] = useState([]); // Lista de clientes para o autocomplete/modal
+  
+  // Estados de Interface
   const [selectedCar, setSelectedCar] = useState(null);
   const [activeTab, setActiveTab] = useState('detalhes');
   const [isLoading, setIsLoading] = useState(true);
   
+  // Estados dos Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
+  
+  // Estado para controlar o modal de despesas
+  const [selectedVehicleForExpenses, setSelectedVehicleForExpenses] = useState(null);
+  
+  // Estado para guardar o resumo financeiro (Despesas carregadas)
+  const [financeiroData, setFinanceiroData] = useState({ despesas: [], totalDespesas: 0 });
 
-  // --- CARREGAR DADOS DA API ---
-  const fetchVehicles = async () => {
+  // --- CARREGAR DADOS DA API (Veículos e Clientes) ---
+  const fetchData = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/veiculos`);
-      if (!response.ok) throw new Error('Erro ao buscar veículos');
-      const data = await response.json();
-      setVehicles(data);
-      setFilteredVehicles(data);
-      setIsLoading(false);
+      setIsLoading(true);
+      
+      // Busca veículos e clientes em paralelo para otimizar
+      const [vehiclesRes, clientsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/veiculos`),
+        fetch(`${API_BASE_URL}/clientes`)
+      ]);
+
+      if (!vehiclesRes.ok || !clientsRes.ok) throw new Error('Erro ao buscar dados');
+
+      const vehiclesData = await vehiclesRes.json();
+      const clientsData = await clientsRes.json();
+
+      setVehicles(vehiclesData);
+      setFilteredVehicles(vehiclesData);
+      setClients(clientsData); // Salva clientes para passar aos modais
+      
     } catch (error) {
       console.error('Erro:', error);
+    } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVehicles();
+    fetchData();
   }, []);
+
+  // --- BUSCAR DESPESAS QUANDO A ABA FINANCEIRO É ABERTA ---
+  useEffect(() => {
+    if (selectedCar && activeTab === 'financeiro') {
+        const fetchDespesas = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}/despesas`);
+                const data = await res.json();
+                const total = data.reduce((acc, item) => acc + Number(item.valor), 0);
+                setFinanceiroData({ despesas: data, totalDespesas: total });
+            } catch (error) {
+                console.error("Erro ao carregar financeiro", error);
+            }
+        };
+        fetchDespesas();
+    }
+  }, [selectedCar, activeTab]);
 
   // --- AÇÕES ---
 
@@ -55,7 +95,7 @@ const Estoque = () => {
     setIsCloseModalOpen(true);
   };
 
- const handleDeleteCar = async () => {
+  const handleDeleteCar = async () => {
     if (!selectedCar) return;
     // eslint-disable-next-line no-restricted-globals
     if (confirm(`Tem certeza que deseja excluir o veículo ${selectedCar.modelo}?`)) {
@@ -121,23 +161,48 @@ const Estoque = () => {
     }
   };
 
+  // --- FUNÇÃO ATUALIZADA DE FECHAMENTO DE VENDA ---
   const confirmCloseFicha = async (saleData) => {
      try {
-        const updatedData = { ...selectedCar, status: 'Vendido', ...saleData };
-        
-        await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, {
-            method: 'PUT',
+        // Prepara o objeto para a tabela de VENDAS
+        const payload = {
+            veiculo_id: selectedCar.id,
+            cliente_id: saleData.cliente_id,
+            valor_venda: parseFloat(saleData.valor_venda),
+            data_venda: saleData.data_venda,
+            vendedor: saleData.vendedor, // Salva quem vendeu
+            metodo_pagamento: saleData.metodo_pagamento,
+            entrada: 0, 
+            financiado: 0,
+            observacoes: `Venda Fechada via Estoque. Obs: ${saleData.observacoes || ''}`
+        };
+
+        // Chama a rota POST /vendas (que cria a venda E marca o carro como vendido)
+        const response = await fetch(`${API_BASE_URL}/vendas`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedData)
+            body: JSON.stringify(payload)
         });
 
-        const updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedData : v);
+        if (!response.ok) throw new Error("Erro ao registrar venda");
+
+        // Atualiza a lista localmente para refletir a mudança de status
+        const updatedList = vehicles.map(v => 
+            v.id === selectedCar.id ? { ...v, status: 'Vendido' } : v
+        );
+        
         setVehicles(updatedList);
         setFilteredVehicles(updatedList);
-        setSelectedCar(updatedData);
+        
+        // Atualiza o carro selecionado para mostrar que foi vendido
+        setSelectedCar({ ...selectedCar, status: 'Vendido' });
+        
         setIsCloseModalOpen(false);
+        alert("Venda registrada com sucesso!");
+
      } catch (error) {
         console.error("Erro ao fechar ficha:", error);
+        alert("Erro ao fechar o negócio. Verifique os dados.");
      }
   };
 
@@ -153,6 +218,19 @@ const Estoque = () => {
          
          <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
          
+         {/* Botão de Custos / Despesas */}
+         <button 
+            onClick={() => {
+                if (!selectedCar) return alert("Selecione um veículo para gerenciar custos.");
+                setSelectedVehicleForExpenses(selectedCar);
+            }}
+            disabled={!selectedCar}
+            className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-50 hover:border-yellow-200'}`}
+         >
+            <Wrench size={24} className="text-yellow-600 mb-1 group-hover:scale-110 transition-transform"/>
+            <span className="text-xs font-bold text-gray-600">Custos</span>
+         </button>
+
          <button onClick={handleEditCar} disabled={!selectedCar} className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-200'}`}>
             <Edit size={24} className="text-orange-500 mb-1 group-hover:scale-110 transition-transform"/>
             <span className="text-xs font-bold text-gray-600">Alterar</span>
@@ -169,14 +247,6 @@ const Estoque = () => {
             <Trash2 size={24} className="text-red-500 mb-1 group-hover:scale-110 transition-transform"/>
             <span className="text-xs font-bold text-gray-600">Excluir</span>
          </button>
-
-         
-         {selectedCar && (
-            <div className="flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent hover:bg-gray-50 hover:border-gray-200 transition-all group min-w-[80px]">
-                <PrintButton data={selectedCar} type="vehicle" />
-                <span className="text-xs font-bold text-gray-600 mt-1">Imprimir</span>
-            </div>
-         )}
 
          <div className="w-full md:flex-1"></div>
          
@@ -248,13 +318,13 @@ const Estoque = () => {
       {selectedCar && (
         <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-inner mt-2 z-20">
           <div className="flex border-b bg-gray-100 overflow-x-auto">
-            {['Detalhes', 'Financeiro', 'Despesas'].map((tab) => (
+            {['Detalhes', 'Financeiro'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab.toLowerCase())}
                 className={`px-6 py-3 text-sm font-bold border-r border-gray-300 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'bg-white text-kadilac-500 border-t-2 border-t-kadilac-500' : 'text-gray-500 hover:bg-gray-200'}`}
               >
-                {tab === 'Financeiro' ? 'Resumo Financeiro' : tab}
+                {tab === 'Financeiro' ? 'Financeiro / Despesas' : tab}
               </button>
             ))}
             <button 
@@ -303,6 +373,12 @@ const Estoque = () => {
 
                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Renavam:</span> <span>{selectedCar.renavam || '-'}</span></div>
                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Chassi:</span> <span>{selectedCar.chassi || '-'}</span></div>
+                   
+                   {/* CAMPO DE VISUALIZAÇÃO: CERTIFICADO */}
+                   <div className="flex justify-between border-b border-gray-100 pb-1 bg-blue-50 px-1 rounded">
+                       <span className="text-blue-700 flex items-center gap-1 font-bold"><FileText size={12}/> Certificado:</span> 
+                       <span className="font-bold text-gray-800">{selectedCar.certificado || '-'}</span>
+                   </div>
                 </div>
 
                 {/* Coluna 3: Observações */}
@@ -314,16 +390,62 @@ const Estoque = () => {
             )}
 
             {activeTab === 'financeiro' && (
-                <div className="flex flex-col md:flex-row gap-4 md:gap-8 items-start">
-                  <div className="bg-red-50 p-4 rounded border border-red-100 w-full md:w-1/3">
-                      <h4 className="text-red-700 font-bold border-b border-red-200 pb-1 mb-2 text-xs uppercase">Entrada</h4>
-                      <div className="flex justify-between text-sm"><span>Custo:</span> <span className="font-bold">R$ {Number(selectedCar.custo).toLocaleString()}</span></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  
+                  {/* Card 1: Valor de Compra */}
+                  <div className="bg-white p-4 rounded border border-gray-200 shadow-sm flex flex-col justify-between">
+                      <div className="flex items-center gap-2 text-gray-500 mb-2">
+                          <DollarSign size={16} /> <span className="text-xs uppercase font-bold">Valor de Compra</span>
+                      </div>
+                      <span className="text-xl font-bold text-gray-800">
+                          R$ {Number(selectedCar.custo || 0).toLocaleString()}
+                      </span>
                   </div>
-                  <div className="bg-blue-50 p-4 rounded border border-blue-100 w-full md:w-1/3">
-                      <h4 className="text-blue-700 font-bold border-b border-blue-200 pb-1 mb-2 text-xs uppercase">Saída</h4>
-                      <div className="flex justify-between text-sm"><span>Venda:</span> <span className="font-bold">R$ {Number(selectedCar.valor).toLocaleString()}</span></div>
+
+                  {/* Card 2: Despesas (Clicável) */}
+                  <div 
+                    onClick={() => setSelectedVehicleForExpenses(selectedCar)}
+                    className="bg-red-50 p-4 rounded border border-red-100 shadow-sm flex flex-col justify-between cursor-pointer hover:bg-red-100 transition-colors"
+                  >
+                      <div className="flex items-center gap-2 text-red-600 mb-2">
+                          <Wrench size={16} /> <span className="text-xs uppercase font-bold">Total Despesas</span>
+                      </div>
+                      <div className="flex justify-between items-end">
+                        <span className="text-xl font-bold text-red-700">
+                            + R$ {financeiroData.totalDespesas.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] bg-red-200 text-red-800 px-2 py-1 rounded">Ver Detalhes</span>
+                      </div>
                   </div>
-               </div>
+
+                  {/* Card 3: Custo Real Total */}
+                  <div className="bg-gray-800 text-white p-4 rounded shadow-md flex flex-col justify-between">
+                      <div className="flex items-center gap-2 text-gray-400 mb-2">
+                          <DollarSign size={16} /> <span className="text-xs uppercase font-bold">Custo Total Real</span>
+                      </div>
+                      <span className="text-2xl font-bold text-white">
+                          R$ {(Number(selectedCar.custo || 0) + financeiroData.totalDespesas).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-gray-400 mt-1">Compra + Despesas</span>
+                  </div>
+
+                  {/* Card 4: Preço de Venda / Lucro */}
+                  <div className="bg-green-50 p-4 rounded border border-green-100 shadow-sm flex flex-col justify-between">
+                      <div className="flex items-center gap-2 text-green-700 mb-2">
+                          <TrendingUp size={16} /> <span className="text-xs uppercase font-bold">Venda Esperada</span>
+                      </div>
+                      <span className="text-xl font-bold text-green-700">
+                          R$ {Number(selectedCar.valor || 0).toLocaleString()}
+                      </span>
+                      <div className="border-t border-green-200 mt-2 pt-1 flex justify-between">
+                          <span className="text-xs text-green-800">Lucro Est.:</span>
+                          <span className="text-sm font-bold text-green-800">
+                              R$ {(Number(selectedCar.valor || 0) - (Number(selectedCar.custo || 0) + financeiroData.totalDespesas)).toLocaleString()}
+                          </span>
+                      </div>
+                  </div>
+
+                </div>
             )}
 
             {activeTab === 'fotos' && (
@@ -348,19 +470,44 @@ const Estoque = () => {
         </div>
       )}
 
+      {/* MODAL DE CRIAÇÃO/EDIÇÃO DO VEÍCULO */}
       <VehicleModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onSave={handleSaveVehicle}
         initialData={selectedCar}
         mode={modalMode}
+        clientsList={clients} // Passa lista de clientes para o autocomplete de proprietário
       />
+
+      {/* MODAL DE FECHAMENTO DE VENDA (Com Vendedor) */}
       <CloseFileModal 
         isOpen={isCloseModalOpen}
         onClose={() => setIsCloseModalOpen(false)}
         onConfirm={confirmCloseFicha}
         vehicle={selectedCar}
+        clientsList={clients} // Passa lista de clientes para escolher o comprador
       />
+      
+      {/* MODAL DE DESPESAS */}
+      {selectedVehicleForExpenses && (
+        <DespesasModal 
+            vehicle={selectedVehicleForExpenses}
+            onClose={() => {
+                setSelectedVehicleForExpenses(null);
+                // Força recarregar os dados do financeiro ao fechar o modal
+                if(selectedCar && activeTab === 'financeiro') {
+                    const fetchDespesas = async () => {
+                        const res = await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}/despesas`);
+                        const data = await res.json();
+                        const total = data.reduce((acc, item) => acc + Number(item.valor), 0);
+                        setFinanceiroData({ despesas: data, totalDespesas: total });
+                    };
+                    fetchDespesas();
+                }
+            }}
+        />
+      )}
     </div>
   );
 };

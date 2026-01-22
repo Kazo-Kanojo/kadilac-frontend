@@ -9,50 +9,74 @@
 <body>
     <div class="recibo-a4 declaracao">
         <header class="doc-header">
-            <h1>S&O COMÉRCIO DE VEÍCULOS EIRELI</h1>
+            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
             <p class="separador">***</p>
             <h2>Declaração</h2>
             <p class="separador">***</p>
         </header>
         <main>
             <p class="paragrafo-principal">
-                Eu, <strong>VANDERLITA RODRIGUES TRENTINI</strong>, CNPF: <strong>257.945.468-32</strong>, R.G.: <strong>32904408</strong>, com domicílio em: <strong>AV DOS INDUSTRIAIS, 909</strong>, Bairro: <strong>JD EUROPA</strong>, Cidade: <strong>VARGEM GRANDE PAULISTA</strong>, Estado: <strong>SP</strong> CEP: <strong>06733-232</strong>.
+                Eu, <strong>{{CLIENTE_NOME}}</strong>, CPF: <strong>{{CLIENTE_CPF}}</strong>, R.G.: <strong>{{CLIENTE_RG}}</strong>, com domicílio em: <strong>{{CLIENTE_ENDERECO}}</strong>.
             </p>
 
             <p class="paragrafo-legal">
-                [cite_start]atendendo o determinado pela portaria do DILI de 17/05/1994, publicada no Diário Oficial do Estado de 19/05/1994, do delegado de polícia coordenador geral do registro e licenciamento de veículos do departamento estadual de transito DETRAN-SP e resolução número 623/83, DECLARO para fins de obtenção de certificado de registro de veículo automotor, que o veículo de características abaixo, encontra-se em perfeito estado, oferecendo completa segurança e porta todos os equipamentos obrigatórios nos termos do CONTRAN e seu regulamento. [cite: 81, 82, 83, 84]
+                Declaro para os devidos fins que assumo total responsabilidade civil e criminal, bem como por multas de trânsito, referente ao veículo abaixo descrito a partir desta data:
             </p>
 
-            <section class="info-veiculo">
-                <div class="field full"><label>Veículo:</label><span>HYUNDAI/ HB20 1.0M EVOLUTI</span></div>
-                <div class="field half"><label>Ano:</label><span>2020/2020</span></div>
-                <div class="field half"><label>Cor:</label><span>Prata</span></div>
-                <div class="field half"><label>Combustível:</label><span>Bic</span></div>
-                <div class="field half"><label>Placa:</label><span>QXX-8772</span></div>
-                <div class="field full"><label>Renavan:</label><span>1227163409</span></div>
-                <div class="field full"><label>Chassi:</label><span>9BHCP51AALP074241</span></div>
-                <div class="field full"><label>Certificado:</label><span>254253757057</span></div>
+            <section class="veiculo-box">
+                <div class="field full"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
+                <div class="field half"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
+                <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
+                <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
+                <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
+                <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
             </section>
 
             <p>Para maior clareza, firmo a presente declaração.</p>
 
-            <p class="data-local">VARGEM GRANDE PAULISTA, 29 de Setembro de 2025.</p>
+            <p class="data-local">{{LOJA_CIDADE}}, {{DATA_ATUAL}}.</p>
 
             <footer>
                 <div class="assinaturas">
                     <div class="assinatura-block">
                         <div class="linha-assinatura"></div>
-                        <p>VANDERLITA RODRIGUES TRENTINI</p>
+                        <p style="text-transform: uppercase;">{{CLIENTE_NOME}}</p>
+                        <p>Declarante</p>
                     </div>
-                </div>
-
-                <div class="garantia-obs">
-                    <p>
-                        [cite_start]<strong>OBS:</strong> A Garantia do veículo acima é de 03 (três) Meses ou 3.000 km o que exceder primeiro, Apenas para MOTOR E CAMBIO, sendo que os demais itens NÃO fazem parte da Garantia. [cite: 97]
-                    </p>
                 </div>
             </footer>
         </main>
     </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const data = JSON.parse(localStorage.getItem('sistema_print_data'));
+            if (!data) return;
+
+            const replacements = {
+                '{{CLIENTE_NOME}}': data.client?.nome || '',
+                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '',
+                '{{CLIENTE_RG}}': data.client?.rg || '',
+                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '',
+                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
+                '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
+                '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
+                '{{VEICULO_COR}}': data.vehicle?.cor || '',
+                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
+                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
+                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
+                '{{LOJA_NOME}}': data.store?.nome_loja || '',
+                '{{LOJA_CIDADE}}': data.store?.cidade || '',
+                '{{DATA_ATUAL}}': data.date
+            };
+
+            let html = document.body.innerHTML;
+            for (const [key, val] of Object.entries(replacements)) {
+                html = html.replace(new RegExp(key, 'g'), val);
+            }
+            document.body.innerHTML = html;
+            setTimeout(() => window.print(), 500);
+        });
+    </script>
 </body>
 </html>

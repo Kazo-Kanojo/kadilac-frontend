@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { FilePlus, User, CheckCircle, Car } from 'lucide-react';
+import { FilePlus, User, Car, FileText, BadgeCheck } from 'lucide-react';
 import { API_BASE_URL } from '../api';
 
 const NovaFicha = () => {
   const [clients, setClients] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [storeConfig, setStoreConfig] = useState(null); // <--- 1. Estado para Config da Loja
   
-  // Estado do Formulário
   const [formData, setFormData] = useState({
     cliente_id: '',
     veiculo_id: '',
+    vendedor: '',
     valor_venda: '',
     entrada: '',
     financiado: '',
@@ -17,33 +18,42 @@ const NovaFicha = () => {
     observacoes: ''
   });
 
-  // Busca dados iniciais
+  const documents = [
+    { title: 'Recibo de Venda', url: '/templates/pages/Recibo_de_Venda.html' },
+    { title: 'Termo de Resp.', url: '/templates/pages/Termo.html' },
+    { title: 'Procuração', url: '/templates/pages/procurcao.html' },
+    { title: 'Declaração', url: '/templates/pages/declaracao.html' },
+    { title: 'Ficha Cadastral', url: '/templates/pages/ficha.html' },
+    { title: 'Compra', url: '/templates/pages/Compra.html' }
+  ];
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [clientsRes, vehiclesRes] = await Promise.all([
+        // <--- 2. Adicionamos a busca de /config aqui
+        const [clientsRes, vehiclesRes, configRes] = await Promise.all([
           fetch(`${API_BASE_URL}/clientes`),
-          fetch(`${API_BASE_URL}/veiculos-estoque`)
+          fetch(`${API_BASE_URL}/veiculos-estoque`),
+          fetch(`${API_BASE_URL}/config`)
         ]);
-        
+
         const clientsData = await clientsRes.json();
         const vehiclesData = await vehiclesRes.json();
+        const configData = await configRes.json();
 
         setClients(clientsData);
         setVehicles(vehiclesData);
+        setStoreConfig(configData); // <--- Salva a config no estado
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
-        alert("Erro ao carregar lista de clientes ou veículos.");
       }
     };
     loadData();
   }, []);
 
-  // Preenche automaticamente o valor quando seleciona um carro
   const handleVehicleChange = (e) => {
     const vId = e.target.value;
     const vehicle = vehicles.find(v => v.id.toString() === vId);
-    
     setFormData(prev => ({
       ...prev,
       veiculo_id: vId,
@@ -51,175 +61,168 @@ const NovaFicha = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleGenerateDocument = (docUrl) => {
     if (!formData.cliente_id || !formData.veiculo_id) {
-      alert("Por favor, selecione um Cliente e um Veículo.");
+      alert('Selecione um cliente e um veículo primeiro.');
       return;
     }
+
+    const client = clients.find(c => c.id.toString() === formData.cliente_id.toString());
+    const vehicle = vehicles.find(v => v.id.toString() === formData.veiculo_id.toString());
+
+    // 3. Prepara os dados INCLUINDO OS DADOS DA LOJA
+    const printData = {
+      client: client,
+      vehicle: vehicle,
+      store: storeConfig, // <--- Aqui vai a mágica: enviamos os dados da empresa
+      sale: {
+        price: formData.valor_venda,
+        entry: formData.entrada,
+        financed: formData.financiado,
+        method: formData.metodo_pagamento,
+        obs: formData.observacoes,
+        seller: formData.vendedor
+      },
+      date: new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+    };
+
+    localStorage.setItem('sistema_print_data', JSON.stringify(printData));
+    window.location.href = docUrl;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.cliente_id || !formData.veiculo_id || !formData.vendedor) {
+      alert("Por favor, preencha Cliente, Veículo e Vendedor.");
+      return;
+    }
+
+    const dadosParaEnviar = {
+      ...formData,
+      valor_venda: formData.valor_venda === '' ? 0 : parseFloat(formData.valor_venda),
+      entrada: formData.entrada === '' ? 0 : parseFloat(formData.entrada),
+      financiado: formData.financiado === '' ? 0 : parseFloat(formData.financiado)
+    };
 
     try {
       const response = await fetch(`${API_BASE_URL}/vendas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(dadosParaEnviar)
       });
 
-      if (!response.ok) throw new Error('Erro ao salvar venda');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro ao salvar venda');
+      }
 
       alert("Ficha criada com sucesso! Veículo marcado como VENDIDO.");
-      // Redireciona para o estoque (isso fará um refresh na página)
       window.location.href = '/'; 
     } catch (error) {
       console.error(error);
-      alert("Erro ao criar ficha.");
+      alert(`Erro: ${error.message}`);
     }
   };
 
   return (
-    <div className="flex flex-col h-full animate-fade-in">
-        <div className="max-w-4xl mx-auto w-full">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <FilePlus className="text-orange-500" /> Nova Ficha de Venda
-          </h1>
+    <div className="max-w-5xl mx-auto p-6">
+      <h1 className="text-3xl font-bold text-gray-800 mb-8 flex items-center gap-2">
+        <FilePlus className="text-orange-500" /> Nova Negociação
+      </h1>
 
-          <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            
-            {/* SEÇÃO 1: VÍNCULO */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cliente (Comprador)</label>
-                <div className="relative">
-                  <select 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none appearance-none"
-                    value={formData.cliente_id}
-                    onChange={e => setFormData({...formData, cliente_id: e.target.value})}
-                  >
-                    <option value="">Selecione um cliente...</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>{c.nome} - {c.cpf_cnpj}</option>
-                    ))}
-                  </select>
-                  <User className="absolute left-3 top-3.5 text-gray-400" size={18} />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Veículo (Em Estoque)</label>
-                <div className="relative">
-                  <select 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none appearance-none"
-                    value={formData.veiculo_id}
-                    onChange={handleVehicleChange}
-                  >
-                    <option value="">Selecione um veículo...</option>
-                    {vehicles.map(v => (
-                      <option key={v.id} value={v.id}>{v.modelo} - {v.placa} ({v.cor})</option>
-                    ))}
-                  </select>
-                  <Car className="absolute left-3 top-3.5 text-gray-400" size={18} />
-                </div>
+      <div className="grid md:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h2 className="font-bold text-lg mb-4 text-gray-700">1. Dados da Venda</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Cliente</label>
+              <div className="relative">
+                <select 
+                  className="w-full p-3 pl-10 border rounded-lg bg-gray-50 outline-none focus:border-orange-500"
+                  value={formData.cliente_id}
+                  onChange={e => setFormData({...formData, cliente_id: e.target.value})}
+                >
+                  <option value="">Selecione...</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+                <User className="absolute left-3 top-3.5 text-gray-400" size={18} />
               </div>
             </div>
 
-            <div className="border-t border-gray-100 my-6"></div>
-
-            {/* SEÇÃO 2: VALORES */}
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Dados da Negociação</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Valor Total (R$)</label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:border-orange-500 outline-none"
-                    value={formData.valor_venda}
-                    onChange={e => setFormData({...formData, valor_venda: e.target.value})}
-                  />
-                  <span className="absolute left-3 top-2 text-gray-400 text-sm">R$</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Entrada (R$)</label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:border-orange-500 outline-none"
-                    value={formData.entrada}
-                    onChange={e => setFormData({...formData, entrada: e.target.value})}
-                  />
-                  <span className="absolute left-3 top-2 text-gray-400 text-sm">R$</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Financiado (R$)</label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:border-orange-500 outline-none"
-                    value={formData.financiado}
-                    onChange={e => setFormData({...formData, financiado: e.target.value})}
-                  />
-                  <span className="absolute left-3 top-2 text-gray-400 text-sm">R$</span>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Veículo</label>
+              <div className="relative">
+                <select 
+                  className="w-full p-3 pl-10 border rounded-lg bg-gray-50 outline-none focus:border-orange-500"
+                  value={formData.veiculo_id}
+                  onChange={handleVehicleChange}
+                >
+                  <option value="">Selecione...</option>
+                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.modelo} - {v.placa}</option>)}
+                </select>
+                <Car className="absolute left-3 top-3.5 text-gray-400" size={18} />
               </div>
             </div>
 
-            <div className="mb-6">
-               <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
-               <div className="flex gap-4">
-                  {['Pix', 'Dinheiro', 'Financiamento', 'Cartão'].map(method => (
-                    <label key={method} className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="pagamento"
-                        value={method}
-                        checked={formData.metodo_pagamento === method}
-                        onChange={e => setFormData({...formData, metodo_pagamento: e.target.value})}
-                        className="accent-orange-500"
-                      />
-                      <span className="text-sm text-gray-600">{method}</span>
-                    </label>
-                  ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Vendedor</label>
+              <div className="relative">
+                <input 
+                  type="text"
+                  className="w-full p-3 pl-10 border rounded-lg bg-gray-50 outline-none focus:border-orange-500"
+                  placeholder="Nome do Vendedor"
+                  value={formData.vendedor}
+                  onChange={e => setFormData({...formData, vendedor: e.target.value})}
+                />
+                <BadgeCheck className="absolute left-3 top-3.5 text-gray-400" size={18} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                 <label className="text-xs font-bold text-gray-500">Valor (R$)</label>
+                 <input type="number" className="w-full p-2 border rounded" 
+                   value={formData.valor_venda} onChange={e => setFormData({...formData, valor_venda: e.target.value})} />
+               </div>
+               <div>
+                 <label className="text-xs font-bold text-gray-500">Entrada (R$)</label>
+                 <input type="number" className="w-full p-2 border rounded" 
+                   value={formData.entrada} onChange={e => setFormData({...formData, entrada: e.target.value})} />
                </div>
             </div>
-
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Observações</label>
-              <textarea 
-                rows="3"
-                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
-                placeholder="Detalhes adicionais sobre a venda..."
-                value={formData.observacoes}
-                onChange={e => setFormData({...formData, observacoes: e.target.value})}
-              ></textarea>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button 
-                type="button"
-                // Alterei para apenas voltar a raiz ou recarregar, já que o controle de tela é pelo App.jsx
-                onClick={() => window.location.href = '/'}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 font-medium"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit"
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2 shadow-sm shadow-green-200"
-              >
-                <CheckCircle size={18} />
-                Finalizar Venda
-              </button>
-            </div>
-
-          </form>
+          </div>
+          
+          <button onClick={handleSubmit} className="mt-6 w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold">
+            Salvar Venda
+          </button>
         </div>
+
+        <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 h-fit">
+          <h2 className="font-bold text-lg mb-4 text-blue-900 flex items-center gap-2">
+            <FileText size={20} /> 
+            2. Gerar Documentos
+          </h2>
+          <p className="text-sm text-blue-700 mb-6">
+            Selecione o documento abaixo para abrir já preenchido.
+          </p>
+
+          <div className="grid grid-cols-1 gap-3">
+            {documents.map((doc, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleGenerateDocument(doc.url)}
+                className="flex items-center justify-between p-4 bg-white border border-blue-200 rounded-lg hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all group shadow-sm"
+              >
+                <span className="font-medium">{doc.title}</span>
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded group-hover:bg-white group-hover:text-blue-600">
+                  Abrir
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

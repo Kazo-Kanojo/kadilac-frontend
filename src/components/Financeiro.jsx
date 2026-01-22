@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, DollarSign, Calendar, User, Car, Trash2, Printer, AlertCircle } from 'lucide-react';
 import { API_BASE_URL } from '../api';
-import DocumentViewer from './DocumentViewer'; // Certifique-se de ter criado este arquivo
 
 const Financeiro = () => {
   const [sales, setSales] = useState([]);
@@ -177,7 +176,7 @@ const Financeiro = () => {
                                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
                                             title="Imprimir Recibo/Contrato"
                                         >
-                                            <Printer size={18} />
+                                            
                                         </button>
                                         <button 
                                             onClick={() => handleDeleteSale(sale)}
@@ -195,14 +194,6 @@ const Financeiro = () => {
             </table>
         </div>
       </div>
-
-      {/* Modal de Impressão */}
-      {selectedSaleForPrint && (
-        <DocumentViewer 
-            saleId={selectedSaleForPrint} 
-            onClose={() => setSelectedSaleForPrint(null)} 
-        />
-      )}
     </div>
   );
 };
