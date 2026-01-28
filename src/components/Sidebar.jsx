@@ -1,7 +1,7 @@
-
 import { LayoutDashboard, Car, Users, Wallet, Settings, LogOut, X, FilePlus } from 'lucide-react';
 
-const Sidebar = ({ activeScreen, setActiveScreen, isOpen, onClose }) => {
+// Adicionei 'onLogout' nas props recebidas
+const Sidebar = ({ activeScreen, setActiveScreen, isOpen, onClose, onLogout }) => {
   
   const MenuItem = ({ id, icon: Icon, label }) => (
     <button
@@ -53,7 +53,7 @@ const Sidebar = ({ activeScreen, setActiveScreen, isOpen, onClose }) => {
         <nav className="flex-1 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           <MenuItem id="dashboard" icon={LayoutDashboard} label="Visão Geral" />
           
-          {/* 2. Botão Nova Ficha Adicionado Aqui */}
+          {/* 2. Botão Nova Ficha */}
           <MenuItem id="nova-ficha" icon={FilePlus} label="Nova Ficha" />
           
           <MenuItem id="estoque" icon={Car} label="Veículos" />
@@ -62,8 +62,12 @@ const Sidebar = ({ activeScreen, setActiveScreen, isOpen, onClose }) => {
           <MenuItem id="config" icon={Settings} label="Configurações" />
         </nav>
 
+        {/* RODAPÉ COM BOTÃO DE SAIR ATIVO */}
         <div className="p-4 border-t border-kadilac-400 bg-kadilac-500">
-          <button className="flex items-center gap-3 text-kadilac-200 hover:text-white transition-colors w-full text-sm justify-center md:justify-start">
+          <button 
+            onClick={onLogout} // <--- A MÁGICA ACONTECE AQUI
+            className="flex items-center gap-3 text-kadilac-200 hover:text-white transition-colors w-full text-sm justify-center md:justify-start"
+          >
             <LogOut size={16} />
             <span className="font-medium">Sair</span>
           </button>
