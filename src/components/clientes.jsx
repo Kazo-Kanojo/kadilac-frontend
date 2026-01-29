@@ -1,34 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Search, UserPlus, Edit, Trash2, User, Phone, MapPin, History, Car, DollarSign, ChevronDown, Calendar, Mail } from 'lucide-react';
+import { Search, UserPlus, Edit, Trash2, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail } from 'lucide-react';
 import ClientModal from './ClientModal';
-import { API_BASE_URL } from '../api';
+// ALTERAÇÃO 1: Importar api (axios) em vez de API_BASE_URL
+import api from '../api';
 
 const Clientes = () => {
   // Estados de Dados
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
-  const [clientHistory, setClientHistory] = useState([]); // Histórico de compras do cliente selecionado
+  const [clientHistory, setClientHistory] = useState([]); 
 
   // Estados de Interface
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedClient, setSelectedClient] = useState(null); // Cliente selecionado para o painel inferior
-  const [activeTab, setActiveTab] = useState('dados'); // Abas do painel inferior ('dados' ou 'historico')
+  const [selectedClient, setSelectedClient] = useState(null); 
+  const [activeTab, setActiveTab] = useState('dados'); 
 
   // Estados do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create'); // 'create' ou 'edit'
+  const [modalMode, setModalMode] = useState('create'); 
 
   // --- CARREGAMENTO INICIAL ---
   const fetchClients = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/clientes`);
-      const data = await response.json();
-      setClients(data);
-      setFilteredClients(data);
+      // ALTERAÇÃO 2: Usar api.get. O axios trata o erro 401 automaticamente (evita o crash do .map)
+      const response = await api.get('/clientes');
+      
+      // O axios retorna os dados em .data
+      setClients(response.data);
+      setFilteredClients(response.data);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
+      // Se der erro, mantemos a lista vazia para não quebrar a tela
+      setClients([]);
+      setFilteredClients([]);
     } finally {
       setIsLoading(false);
     }
@@ -43,11 +49,9 @@ const Clientes = () => {
     if (selectedClient && activeTab === 'historico') {
         const fetchHistory = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/clientes/${selectedClient.id}/vendas`);
-                if(res.ok) {
-                    const data = await res.json();
-                    setClientHistory(data);
-                }
+                // ALTERAÇÃO 3: Usar api.get
+                const res = await api.get(`/clientes/${selectedClient.id}/vendas`);
+                setClientHistory(res.data);
             } catch (error) {
                 console.error("Erro ao buscar histórico", error);
             }
@@ -56,12 +60,15 @@ const Clientes = () => {
     }
   }, [selectedClient, activeTab]);
 
-  // --- FILTRO DE BUSCA ---
+  // --- FILTRO DE BUSCA (Mantido igual) ---
   useEffect(() => {
+    // Verificação de segurança: garante que clients é um array antes de filtrar
+    if (!Array.isArray(clients)) return;
+
     const lowerTerm = searchTerm.toLowerCase();
     const filtered = clients.filter(client => 
-      client.nome.toLowerCase().includes(lowerTerm) ||
-      client.cpf_cnpj.includes(searchTerm) || 
+      (client.nome && client.nome.toLowerCase().includes(lowerTerm)) ||
+      (client.cpf_cnpj && client.cpf_cnpj.includes(searchTerm)) || 
       (client.telefone && client.telefone.includes(searchTerm))
     );
     setFilteredClients(filtered);
@@ -70,11 +77,11 @@ const Clientes = () => {
   // --- HANDLERS ---
   const handleSelectClient = (client) => {
       setSelectedClient(client);
-      setActiveTab('dados'); // Reseta para a aba de dados ao trocar de cliente
+      setActiveTab('dados'); 
   };
 
   const handleNewClient = () => {
-    setSelectedClient(null); // Fecha o painel de baixo se estiver aberto
+    setSelectedClient(null); 
     setModalMode('create');
     setIsModalOpen(true);
   };
@@ -90,27 +97,25 @@ const Clientes = () => {
     // eslint-disable-next-line no-restricted-globals
     if (confirm(`Tem certeza que deseja excluir ${selectedClient.nome}?`)) {
       try {
-        await fetch(`${API_BASE_URL}/clientes/${selectedClient.id}`, { method: 'DELETE' });
+        // ALTERAÇÃO 4: Usar api.delete
+        await api.delete(`/clientes/${selectedClient.id}`);
         fetchClients();
         setSelectedClient(null);
       } catch (error) {
-        alert("Erro ao excluir cliente.");
+        alert("Erro ao excluir cliente: " + (error.response?.data?.message || error.message));
       }
     }
   };
 
   const handleSaveClient = async (clientData) => {
-    const method = modalMode === 'create' ? 'POST' : 'PUT';
-    const url = modalMode === 'create' 
-      ? `${API_BASE_URL}/clientes` 
-      : `${API_BASE_URL}/clientes/${selectedClient.id}`;
-
     try {
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(clientData)
-      });
+      // ALTERAÇÃO 5: Usar api.post ou api.put dependendo do modo
+      if (modalMode === 'create') {
+        await api.post('/clientes', clientData);
+      } else {
+        await api.put(`/clientes/${selectedClient.id}`, clientData);
+      }
+      
       fetchClients();
       setIsModalOpen(false);
       
@@ -119,14 +124,14 @@ const Clientes = () => {
           setSelectedClient({...selectedClient, ...clientData});
       }
     } catch (error) {
-      alert("Erro ao salvar cliente.");
+      console.error(error);
+      alert("Erro ao salvar cliente: " + (error.response?.data?.error || error.message));
     }
   };
 
-  // Função auxiliar para formatar data (Apenas Data)
+  // Função auxiliar para formatar data
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    // timeZone: 'UTC' é importante para evitar que o dia volte 1 devido ao fuso
     return new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   };
 
@@ -193,7 +198,7 @@ const Clientes = () => {
             <tbody className="divide-y">
                 {isLoading ? (
                     <tr><td colSpan="5" className="p-4 text-center">Carregando clientes...</td></tr>
-                ) : filteredClients.length === 0 ? (
+                ) : !filteredClients || filteredClients.length === 0 ? (
                     <tr><td colSpan="5" className="p-4 text-center text-gray-400">Nenhum cliente encontrado.</td></tr>
                 ) : (
                     filteredClients.map((client) => (
@@ -250,7 +255,6 @@ const Clientes = () => {
                             <p><span className="text-gray-500 w-24 inline-block">Nome:</span> <strong className="text-lg">{selectedClient.nome}</strong></p>
                             <p><span className="text-gray-500 w-24 inline-block">CPF/CNPJ:</span> {selectedClient.cpf_cnpj}</p>
                             <p><span className="text-gray-500 w-24 inline-block">RG:</span> {selectedClient.rg || '-'}</p>
-                            {/* DATA DE NASCIMENTO FORMATADA AQUI */}
                             <p><span className="text-gray-500 w-24 inline-block">Nascimento:</span> {formatDate(selectedClient.data_nascimento)}</p>
                         </div>
 

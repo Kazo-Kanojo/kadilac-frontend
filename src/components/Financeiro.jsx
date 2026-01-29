@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, DollarSign, Calendar, User, Car, Trash2, Printer, AlertCircle } from 'lucide-react';
-import { API_BASE_URL } from '../api';
+// ALTERAÇÃO 1: Importar 'api' para corrigir o erro 401
+import api from '../api';
 
 const Financeiro = () => {
   const [sales, setSales] = useState([]);
@@ -15,12 +16,19 @@ const Financeiro = () => {
 
   const fetchSales = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/financeiro/vendas`);
-      const data = await response.json();
-      setSales(data);
+      // ALTERAÇÃO 2: Substituir fetch por api.get
+      const response = await api.get('/financeiro/vendas');
+      
+      // Validação: Garante que é um array para não dar erro no .filter
+      if (Array.isArray(response.data)) {
+        setSales(response.data);
+      } else {
+        setSales([]);
+      }
       setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar vendas:", error);
+      setSales([]); // Evita travar a tela se der erro
       setLoading(false);
     }
   };
@@ -32,11 +40,8 @@ const Financeiro = () => {
     // eslint-disable-next-line no-restricted-globals
     if (confirm(confirmMessage)) {
       try {
-        const response = await fetch(`${API_BASE_URL}/vendas/${sale.id}`, {
-          method: 'DELETE'
-        });
-
-        if (!response.ok) throw new Error('Erro ao cancelar venda');
+        // ALTERAÇÃO 3: Substituir fetch DELETE por api.delete
+        await api.delete(`/vendas/${sale.id}`);
 
         // Remove da lista visualmente sem precisar recarregar
         setSales(sales.filter(item => item.id !== sale.id));
@@ -50,7 +55,10 @@ const Financeiro = () => {
   };
 
   // Filtro de busca (nome, carro, placa, cpf)
-  const filteredSales = sales.filter(sale => 
+  // ALTERAÇÃO 4: Garantia de segurança para o filter não quebrar
+  const safeSales = Array.isArray(sales) ? sales : [];
+  
+  const filteredSales = safeSales.filter(sale => 
     (sale.cliente_nome && sale.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (sale.veiculo_modelo && sale.veiculo_modelo.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (sale.veiculo_placa && sale.veiculo_placa.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -176,7 +184,7 @@ const Financeiro = () => {
                                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
                                             title="Imprimir Recibo/Contrato"
                                         >
-                                            
+                                            <Printer size={18}/>
                                         </button>
                                         <button 
                                             onClick={() => handleDeleteSale(sale)}

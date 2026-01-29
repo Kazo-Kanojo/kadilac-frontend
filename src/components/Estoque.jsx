@@ -4,13 +4,14 @@ import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
-import { API_BASE_URL } from '../api';
+// ALTERAÇÃO 1: Importar 'api' para comunicações autenticadas
+import api from '../api'; 
 
 const Estoque = () => {
   // Estados de Dados
   const [vehicles, setVehicles] = useState([]); 
   const [filteredVehicles, setFilteredVehicles] = useState([]);
-  const [clients, setClients] = useState([]); // Lista de clientes para o autocomplete/modal
+  const [clients, setClients] = useState([]); 
   
   // Estados de Interface
   const [selectedCar, setSelectedCar] = useState(null);
@@ -33,20 +34,16 @@ const Estoque = () => {
     try {
       setIsLoading(true);
       
-      // Busca veículos e clientes em paralelo para otimizar
+      // ALTERAÇÃO 2: Usar api.get (envia token automaticamente)
       const [vehiclesRes, clientsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/veiculos`),
-        fetch(`${API_BASE_URL}/clientes`)
+        api.get('/veiculos'),
+        api.get('/clientes')
       ]);
 
-      if (!vehiclesRes.ok || !clientsRes.ok) throw new Error('Erro ao buscar dados');
-
-      const vehiclesData = await vehiclesRes.json();
-      const clientsData = await clientsRes.json();
-
-      setVehicles(vehiclesData);
-      setFilteredVehicles(vehiclesData);
-      setClients(clientsData); // Salva clientes para passar aos modais
+      // ALTERAÇÃO 3: Axios retorna dados em .data (não precisa de .json())
+      setVehicles(vehiclesRes.data);
+      setFilteredVehicles(vehiclesRes.data);
+      setClients(clientsRes.data);
       
     } catch (error) {
       console.error('Erro:', error);
@@ -64,8 +61,9 @@ const Estoque = () => {
     if (selectedCar && activeTab === 'financeiro') {
         const fetchDespesas = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}/despesas`);
-                const data = await res.json();
+                // ALTERAÇÃO 4: Substituir fetch por api.get
+                const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
+                const data = res.data;
                 const total = data.reduce((acc, item) => acc + Number(item.valor), 0);
                 setFinanceiroData({ despesas: data, totalDespesas: total });
             } catch (error) {
@@ -100,13 +98,8 @@ const Estoque = () => {
     // eslint-disable-next-line no-restricted-globals
     if (confirm(`Tem certeza que deseja excluir o veículo ${selectedCar.modelo}?`)) {
         try {
-            const response = await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, { 
-                method: 'DELETE' 
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'O servidor recusou a exclusão.');
-            }
+            // ALTERAÇÃO 5: Substituir fetch DELETE por api.delete
+            await api.delete(`/veiculos/${selectedCar.id}`);
             
             const updatedList = vehicles.filter(v => v.id !== selectedCar.id);
             setVehicles(updatedList);
@@ -115,7 +108,7 @@ const Estoque = () => {
             
         } catch (error) {
             console.error("Erro ao excluir:", error);
-            alert("Erro ao excluir: " + error.message);
+            alert("Erro ao excluir: " + (error.response?.data?.message || error.message));
         }
     }
   };
@@ -125,12 +118,9 @@ const Estoque = () => {
         let updatedList;
         // Se modalMode for 'create', cria novo (POST)
         if (modalMode === 'create') {
-            const response = await fetch(`${API_BASE_URL}/veiculos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const newVehicle = await response.json();
+            // ALTERAÇÃO 6: Substituir fetch POST por api.post
+            const response = await api.post('/veiculos', data);
+            const newVehicle = response.data;
             updatedList = [newVehicle, ...vehicles];
         } 
         // Se modalMode for 'edit', atualiza existente (PUT)
@@ -139,12 +129,8 @@ const Estoque = () => {
                 alert("Erro: Nenhum veículo selecionado para edição.");
                 return;
             }
-
-            await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+            // ALTERAÇÃO 7: Substituir fetch PUT por api.put
+            await api.put(`/veiculos/${selectedCar.id}`, data);
             
             const updatedCar = { ...selectedCar, ...data }; 
             updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
@@ -164,29 +150,22 @@ const Estoque = () => {
   // --- FUNÇÃO ATUALIZADA DE FECHAMENTO DE VENDA ---
   const confirmCloseFicha = async (saleData) => {
      try {
-        // Prepara o objeto para a tabela de VENDAS
         const payload = {
             veiculo_id: selectedCar.id,
             cliente_id: saleData.cliente_id,
             valor_venda: parseFloat(saleData.valor_venda),
             data_venda: saleData.data_venda,
-            vendedor: saleData.vendedor, // Salva quem vendeu
+            vendedor: saleData.vendedor,
             metodo_pagamento: saleData.metodo_pagamento,
             entrada: 0, 
             financiado: 0,
             observacoes: `Venda Fechada via Estoque. Obs: ${saleData.observacoes || ''}`
         };
 
-        // Chama a rota POST /vendas (que cria a venda E marca o carro como vendido)
-        const response = await fetch(`${API_BASE_URL}/vendas`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        // ALTERAÇÃO 8: Substituir fetch POST por api.post
+        await api.post('/vendas', payload);
 
-        if (!response.ok) throw new Error("Erro ao registrar venda");
-
-        // Atualiza a lista localmente para refletir a mudança de status
+        // Atualiza a lista localmente
         const updatedList = vehicles.map(v => 
             v.id === selectedCar.id ? { ...v, status: 'Vendido' } : v
         );
@@ -194,7 +173,6 @@ const Estoque = () => {
         setVehicles(updatedList);
         setFilteredVehicles(updatedList);
         
-        // Atualiza o carro selecionado para mostrar que foi vendido
         setSelectedCar({ ...selectedCar, status: 'Vendido' });
         
         setIsCloseModalOpen(false);
@@ -218,7 +196,6 @@ const Estoque = () => {
          
          <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
          
-         {/* Botão de Custos / Despesas */}
          <button 
             onClick={() => {
                 if (!selectedCar) return alert("Selecione um veículo para gerenciar custos.");
@@ -498,8 +475,8 @@ const Estoque = () => {
                 // Força recarregar os dados do financeiro ao fechar o modal
                 if(selectedCar && activeTab === 'financeiro') {
                     const fetchDespesas = async () => {
-                        const res = await fetch(`${API_BASE_URL}/veiculos/${selectedCar.id}/despesas`);
-                        const data = await res.json();
+                        const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
+                        const data = res.data;
                         const total = data.reduce((acc, item) => acc + Number(item.valor), 0);
                         setFinanceiroData({ despesas: data, totalDespesas: total });
                     };

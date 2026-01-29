@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from 'react';
 import { Car, DollarSign, Users, ShoppingBag, TrendingUp, ArrowRight } from 'lucide-react';
-import { API_BASE_URL } from '../api';
+// ALTERAÇÃO 1: Importar 'api' (o axios configurado) em vez de apenas a URL
+import api from '../api'; 
 
 const Dashboard = ({ setActiveScreen }) => {
   const [stats, setStats] = useState({
@@ -16,12 +17,15 @@ const Dashboard = ({ setActiveScreen }) => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/dashboard/resumo`);
-        if (!response.ok) throw new Error('Erro ao carregar dashboard');
-        const data = await response.json();
-        setStats(data);
+        // ALTERAÇÃO 2: Usar api.get(). O token será enviado automaticamente pelo interceptor do api.js
+        const response = await api.get('/dashboard/resumo');
+        
+        // ALTERAÇÃO 3: O axios retorna os dados diretamente em .data, não precisa de .json()
+        setStats(response.data);
       } catch (error) {
         console.error('Erro:', error);
+        // Opcional: Se der erro de autorização, o api.js já deve redirecionar para login,
+        // mas você pode adicionar tratamento visual aqui se quiser.
       } finally {
         setIsLoading(false);
       }

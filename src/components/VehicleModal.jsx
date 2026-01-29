@@ -16,7 +16,7 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
     vendedor: '',
     renavam: '',
     chassi: '',
-    certificado: '', // NOVO CAMPO
+    certificado: '',
     opcionais: '',
     observacoes: '',
     status: 'Em estoque',
@@ -27,15 +27,47 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
 
   useEffect(() => {
     if (initialData && mode === 'edit') {
+      // FUNÇÃO AUXILIAR: Tenta pegar o valor de várias chaves possíveis
+      // Isso resolve o problema de 'data_entrada' vs 'dataEntrada'
+      const getVal = (keys, fallback = '') => {
+        for (let key of keys) {
+          if (initialData[key] !== undefined && initialData[key] !== null) {
+            return initialData[key];
+          }
+        }
+        return fallback;
+      };
+
+      // TRATAMENTO DA DATA
+      let dataFormatada = '';
+      const rawDate = getVal(['data_entrada', 'dataEntrada']);
+      if (rawDate) {
+        dataFormatada = rawDate.split('T')[0];
+      }
+
       setFormData({
-        ...initialData,
-        dataEntrada: initialData.data_entrada ? initialData.data_entrada.split('T')[0] : '',
-        proprietario: initialData.proprietario_anterior || '',
-        certificado: initialData.certificado || '', // Carregar certificado se existir
-        custo: initialData.custo || ''
+        id: initialData.id,
+        modelo: getVal(['modelo', 'model']),
+        placa: getVal(['placa']),
+        ano: getVal(['ano']),
+        cor: getVal(['cor']),
+        combustivel: getVal(['combustivel'], 'Flex'),
+        valor: getVal(['valor'], ''),
+        custo: getVal(['custo'], ''),
+        dataEntrada: dataFormatada,
+        operacao: getVal(['operacao'], 'Compra'),
+        proprietario: getVal(['proprietario_anterior', 'proprietario']),
+        vendedor: getVal(['vendedor']),
+        renavam: getVal(['renavam']),
+        chassi: getVal(['chassi']),
+        certificado: getVal(['certificado']),
+        opcionais: getVal(['opcionais']),
+        observacoes: getVal(['observacoes']),
+        status: getVal(['status'], 'Em estoque'),
+        foto: getVal(['foto']) // Carrega a foto existente (URL ou Base64)
       });
     } else {
-      // Reset para criar novo
+      // RESET PARA CRIAR NOVO
       setFormData({
         modelo: '', placa: '', ano: '', cor: '', combustivel: 'Flex',
         valor: '', custo: '', dataEntrada: new Date().toISOString().split('T')[0],
@@ -54,8 +86,15 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Verifica tamanho do arquivo (limite de 2MB para evitar travar o envio)
+      if (file.size > 2 * 1024 * 1024) {
+        alert("A imagem é muito grande! Escolha uma imagem menor que 2MB.");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
+        // O resultado aqui é uma string longa (data:image/jpeg;base64,...)
         setFormData(prev => ({ ...prev, foto: reader.result }));
       };
       reader.readAsDataURL(file);
@@ -64,7 +103,23 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Prepara os dados convertendo para o formato correto do Banco
+    const dadosParaEnviar = {
+      ...formData,
+      // Garante envio de números
+      valor: formData.valor ? parseFloat(formData.valor) : 0,
+      custo: formData.custo ? parseFloat(formData.custo) : 0,
+      
+      // Mapeia nomes para o backend (snake_case)
+      data_entrada: formData.dataEntrada,
+      proprietario_anterior: formData.proprietario,
+      
+      // Envia a foto explicitamente
+      foto: formData.foto 
+    };
+
+    onSave(dadosParaEnviar);
   };
 
   if (!isOpen) return null;
@@ -86,8 +141,8 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
           
           {/* Seção 1: Dados Básicos e Foto */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            {/* Upload de Foto */}
             <div className="col-span-1">
+              <label className="block text-xs font-bold text-gray-700 mb-2 uppercase text-center">Foto do Veículo</label>
               <div 
                 className="aspect-video w-full rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all bg-gray-50 overflow-hidden relative group"
                 onClick={() => fileInputRef.current.click()}
@@ -96,7 +151,7 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
                   <>
                     <img src={formData.foto} alt="Preview" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-white font-medium flex items-center gap-2"><Upload size={20}/> Trocar</span>
+                      <span className="text-white font-medium flex items-center gap-2"><Upload size={20}/> Trocar Foto</span>
                     </div>
                   </>
                 ) : (
@@ -113,9 +168,9 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
                   onChange={handleFileChange} 
                 />
               </div>
+              <p className="text-[10px] text-gray-400 text-center mt-1">Máx: 2MB</p>
             </div>
 
-            {/* Inputs Principais */}
             <div className="col-span-2 grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Modelo do Veículo</label>
@@ -157,7 +212,6 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
           <h3 className="text-sm font-bold text-blue-800 mb-4 bg-blue-50 p-2 rounded w-fit px-4">Documentação & Origem</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             
-            {/* PROPRIETÁRIO COM BUSCA NO BANCO */}
             <div className="col-span-2">
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Proprietário Anterior (Cliente)</label>
               <input 
@@ -190,7 +244,6 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
               <input name="chassi" value={formData.chassi} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
 
-            {/* CAMPO NOVO: CERTIFICADO */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase text-blue-600">Certificado (CRV/ATPV)</label>
               <input 
@@ -228,7 +281,6 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
             </div>
           </div>
 
-          {/* Observações */}
           <div className="mb-6">
             <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Observações Gerais</label>
             <textarea name="observacoes" value={formData.observacoes} onChange={handleChange} rows="3" className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Detalhes sobre o estado do carro, manutenções necessárias, etc."></textarea>

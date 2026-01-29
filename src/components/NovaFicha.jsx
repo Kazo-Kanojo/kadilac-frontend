@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { FilePlus, User, Car, FileText, BadgeCheck } from 'lucide-react';
-import { API_BASE_URL } from '../api';
+// ALTERAÇÃO 1: Importamos 'api' para usar o axios com token
+import api from '../api'; 
 
 const NovaFicha = () => {
   const [clients, setClients] = useState([]);
   const [vehicles, setVehicles] = useState([]);
-  const [storeConfig, setStoreConfig] = useState(null); // <--- 1. Estado para Config da Loja
+  const [storeConfig, setStoreConfig] = useState(null);
   
   const [formData, setFormData] = useState({
     cliente_id: '',
@@ -30,20 +31,19 @@ const NovaFicha = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // <--- 2. Adicionamos a busca de /config aqui
+        // ALTERAÇÃO 2: Substituir fetch por api.get
+        // O Promise.all executa as 3 requisições ao mesmo tempo
         const [clientsRes, vehiclesRes, configRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/clientes`),
-          fetch(`${API_BASE_URL}/veiculos-estoque`),
-          fetch(`${API_BASE_URL}/config`)
+          api.get('/clientes'),
+          api.get('/veiculos-estoque'),
+          api.get('/config')
         ]);
 
-        const clientsData = await clientsRes.json();
-        const vehiclesData = await vehiclesRes.json();
-        const configData = await configRes.json();
-
-        setClients(clientsData);
-        setVehicles(vehiclesData);
-        setStoreConfig(configData); // <--- Salva a config no estado
+        // ALTERAÇÃO 3: No axios, os dados já vêm em .data (não precisa de .json())
+        setClients(clientsRes.data);
+        setVehicles(vehiclesRes.data);
+        setStoreConfig(configRes.data);
+        
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
       }
@@ -70,11 +70,10 @@ const NovaFicha = () => {
     const client = clients.find(c => c.id.toString() === formData.cliente_id.toString());
     const vehicle = vehicles.find(v => v.id.toString() === formData.veiculo_id.toString());
 
-    // 3. Prepara os dados INCLUINDO OS DADOS DA LOJA
     const printData = {
       client: client,
       vehicle: vehicle,
-      store: storeConfig, // <--- Aqui vai a mágica: enviamos os dados da empresa
+      store: storeConfig,
       sale: {
         price: formData.valor_venda,
         entry: formData.entrada,
@@ -105,22 +104,16 @@ const NovaFicha = () => {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosParaEnviar)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Erro ao salvar venda');
-      }
+      // ALTERAÇÃO 4: Substituir fetch por api.post
+      await api.post('/vendas', dadosParaEnviar);
 
       alert("Ficha criada com sucesso! Veículo marcado como VENDIDO.");
       window.location.href = '/'; 
     } catch (error) {
       console.error(error);
-      alert(`Erro: ${error.message}`);
+      // Tratamento de erro melhorado para Axios
+      const msg = error.response?.data?.error || error.message || 'Erro ao salvar venda';
+      alert(`Erro: ${msg}`);
     }
   };
 
@@ -144,7 +137,8 @@ const NovaFicha = () => {
                   onChange={e => setFormData({...formData, cliente_id: e.target.value})}
                 >
                   <option value="">Selecione...</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  {/* Como corrigimos o carregamento, 'clients' será um array válido agora */}
+                  {Array.isArray(clients) && clients.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
                 <User className="absolute left-3 top-3.5 text-gray-400" size={18} />
               </div>
@@ -159,12 +153,13 @@ const NovaFicha = () => {
                   onChange={handleVehicleChange}
                 >
                   <option value="">Selecione...</option>
-                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.modelo} - {v.placa}</option>)}
+                  {Array.isArray(vehicles) && vehicles.map(v => <option key={v.id} value={v.id}>{v.modelo} - {v.placa}</option>)}
                 </select>
                 <Car className="absolute left-3 top-3.5 text-gray-400" size={18} />
               </div>
             </div>
 
+            {/* Restante do formulário permanece igual */}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Vendedor</label>
               <div className="relative">
