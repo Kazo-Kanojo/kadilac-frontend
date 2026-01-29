@@ -1,199 +1,197 @@
 import { useState, useEffect } from 'react';
-import { Search, DollarSign, Calendar, User, Car, Trash2, Printer, AlertCircle } from 'lucide-react';
-// ALTERAÇÃO 1: Importar 'api' para corrigir o erro 401
+import { DollarSign, TrendingUp, TrendingDown, Calendar, Search, Printer } from 'lucide-react';
 import api from '../api';
 
 const Financeiro = () => {
-  const [sales, setSales] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [summary, setSummary] = useState({ total: 0, entrada: 0, saida: 0 });
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSaleForPrint, setSelectedSaleForPrint] = useState(null);
+  const [dateFilter, setDateFilter] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  // Carrega as vendas ao abrir a tela
   useEffect(() => {
-    fetchSales();
+    fetchTransactions();
   }, []);
 
-  const fetchSales = async () => {
+  useEffect(() => {
+    filterTransactions();
+  }, [searchTerm, dateFilter, transactions]);
+
+  const fetchTransactions = async () => {
     try {
-      // ALTERAÇÃO 2: Substituir fetch por api.get
-      const response = await api.get('/financeiro/vendas');
+      setLoading(true);
       
-      // Validação: Garante que é um array para não dar erro no .filter
-      if (Array.isArray(response.data)) {
-        setSales(response.data);
-      } else {
-        setSales([]);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error("Erro ao buscar vendas:", error);
-      setSales([]); // Evita travar a tela se der erro
-      setLoading(false);
-    }
-  };
+      // 1. BUSCA VENDAS (CORRIGIDO: A rota correta é /financeiro/vendas)
+      const vendasRes = await api.get('/financeiro/vendas');
+      const vendas = vendasRes.data;
 
-  // Função para cancelar venda e estornar veículo
-  const handleDeleteSale = async (sale) => {
-    const confirmMessage = `ATENÇÃO: Você está prestes a excluir a venda do veículo ${sale.veiculo_modelo}.\n\nAo fazer isso, o veículo voltará automaticamente para o ESTOQUE.\n\nDeseja continuar?`;
-    
-    // eslint-disable-next-line no-restricted-globals
-    if (confirm(confirmMessage)) {
+      // 2. BUSCA DESPESAS (Tenta buscar, mas se a rota não existir, segue sem travar)
+      let despesas = [];
       try {
-        // ALTERAÇÃO 3: Substituir fetch DELETE por api.delete
-        await api.delete(`/vendas/${sale.id}`);
-
-        // Remove da lista visualmente sem precisar recarregar
-        setSales(sales.filter(item => item.id !== sale.id));
-        alert('Venda cancelada com sucesso! O veículo está disponível novamente no estoque.');
-        
+         const despesasRes = await api.get('/despesas');
+         despesas = despesasRes.data;
       } catch (error) {
-        console.error(error);
-        alert('Erro ao cancelar venda. Verifique o console para mais detalhes.');
+         console.warn("Aviso: Rota de despesas gerais (/despesas) não encontrada no backend.");
       }
+
+      // Normaliza dados VENDAS
+      const entradas = vendas.map(v => ({
+        id: `v-${v.id}`,
+        tipo: 'entrada',
+        descricao: `Venda: ${v.veiculo_modelo} (${v.veiculo_placa}) - ${v.cliente_nome}`,
+        valor: parseFloat(v.valor_venda),
+        data: v.data_venda,
+        origem: 'Venda'
+      }));
+
+      // Normaliza dados DESPESAS
+      const saidas = despesas.map(d => ({
+        id: `d-${d.id}`,
+        tipo: 'saida',
+        descricao: `Despesa: ${d.descricao}`,
+        valor: parseFloat(d.valor),
+        data: d.data_despesa, // ou d.data, dependendo do banco
+        origem: 'Despesa'
+      }));
+
+      const all = [...entradas, ...saidas].sort((a, b) => new Date(b.data) - new Date(a.data));
+      setTransactions(all);
+      
+      // Calcula Resumo
+      const totalEntrada = entradas.reduce((acc, curr) => acc + curr.valor, 0);
+      const totalSaida = saidas.reduce((acc, curr) => acc + curr.valor, 0);
+      setSummary({
+        entrada: totalEntrada,
+        saida: totalSaida,
+        total: totalEntrada - totalSaida
+      });
+
+    } catch (error) {
+      console.error("Erro ao buscar financeiro:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Filtro de busca (nome, carro, placa, cpf)
-  // ALTERAÇÃO 4: Garantia de segurança para o filter não quebrar
-  const safeSales = Array.isArray(sales) ? sales : [];
-  
-  const filteredSales = safeSales.filter(sale => 
-    (sale.cliente_nome && sale.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (sale.veiculo_modelo && sale.veiculo_modelo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (sale.veiculo_placa && sale.veiculo_placa.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (sale.cpf_cnpj && sale.cpf_cnpj.includes(searchTerm))
-  );
+  const filterTransactions = () => {
+    let filtered = transactions;
 
-  // Cálculo do total mostrado no card superior
-  const totalSales = filteredSales.reduce((acc, curr) => acc + Number(curr.valor_venda), 0);
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      filtered = filtered.filter(t => 
+        t.descricao.toLowerCase().includes(lower) ||
+        t.origem.toLowerCase().includes(lower)
+      );
+    }
+
+    if (dateFilter) {
+      // Filtra pela parte da data (YYYY-MM-DD)
+      filtered = filtered.filter(t => t.data && t.data.startsWith(dateFilter));
+    }
+
+    setFilteredTransactions(filtered);
+  };
+
+  const fMoney = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  
+  const fDate = (dateString) => {
+      if(!dateString) return '-';
+      return new Date(dateString).toLocaleDateString('pt-BR');
+  };
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full">
-      
-      {/* Header e KPIs Rápidos */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-            <DollarSign className="text-green-600" /> Histórico Financeiro
-          </h1>
-          <p className="text-gray-500 mt-1">Registro de todas as vendas e fechamentos.</p>
+    <div className="p-6 max-w-7xl mx-auto animate-fade-in">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <DollarSign className="text-green-600" size={32}/> Controle Financeiro
+      </h1>
+
+      {/* CARDS DE RESUMO */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+            <div>
+                <p className="text-sm font-bold text-gray-400 uppercase">Receitas (Entradas)</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{fMoney(summary.entrada)}</p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-full text-green-600"><TrendingUp size={24}/></div>
         </div>
-        
-        <div className="bg-green-50 px-6 py-3 rounded-xl border border-green-100 flex flex-col items-end shadow-sm">
-            <span className="text-xs font-bold text-green-600 uppercase">Total do Período</span>
-            <span className="text-2xl font-bold text-gray-800">
-                R$ {totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </span>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+            <div>
+                <p className="text-sm font-bold text-gray-400 uppercase">Despesas (Saídas)</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">{fMoney(summary.saida)}</p>
+            </div>
+            <div className="bg-red-100 p-3 rounded-full text-red-600"><TrendingDown size={24}/></div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+            <div>
+                <p className="text-sm font-bold text-gray-400 uppercase">Saldo Líquido</p>
+                <p className={`text-2xl font-bold mt-1 ${summary.total >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {fMoney(summary.total)}
+                </p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full text-blue-600"><DollarSign size={24}/></div>
         </div>
       </div>
 
-      {/* Barra de Ferramentas */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col md:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-                type="text" 
-                placeholder="Buscar por cliente, carro, placa ou CPF..." 
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      {/* FILTROS */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex gap-4 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+                <input 
+                    type="text" 
+                    placeholder="Buscar descrição..." 
+                    className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:border-green-500"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={18}/>
+            </div>
+            <div className="relative">
+                <input 
+                    type="date" 
+                    className="pl-10 pr-4 py-2 border rounded-lg outline-none focus:border-green-500"
+                    value={dateFilter}
+                    onChange={e => setDateFilter(e.target.value)}
+                />
+                <Calendar className="absolute left-3 top-2.5 text-gray-400" size={18}/>
+            </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200 font-medium transition-colors w-full md:w-auto justify-center">
-            <Calendar size={18} />
-            <span>Filtrar Data</span>
+        <button onClick={() => window.print()} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium">
+            <Printer size={18}/> Imprimir Relatório
         </button>
       </div>
 
-      {/* Tabela de Vendas */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
+      {/* TABELA (SEM BOTÃO DE EXCLUIR) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 font-semibold">
+            <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
                     <tr>
-                        <th className="px-6 py-4">Data</th>
-                        <th className="px-6 py-4">Cliente</th>
-                        <th className="px-6 py-4">Veículo</th>
-                        <th className="px-6 py-4">Pagamento</th>
-                        <th className="px-6 py-4 text-right">Valor Total</th>
-                        <th className="px-6 py-4 text-center">Ações</th>
+                        <th className="p-4">Data</th>
+                        <th className="p-4">Descrição</th>
+                        <th className="p-4">Categoria</th>
+                        <th className="p-4 text-right">Valor</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                     {loading ? (
-                        <tr><td colSpan="6" className="p-8 text-center text-gray-400">Carregando registros...</td></tr>
-                    ) : filteredSales.length === 0 ? (
-                        <tr>
-                            <td colSpan="6" className="p-12 text-center text-gray-400 flex flex-col items-center justify-center">
-                                <AlertCircle size={48} className="mb-2 opacity-20"/>
-                                <p>Nenhuma venda encontrada.</p>
-                            </td>
-                        </tr>
+                        <tr><td colSpan="4" className="p-8 text-center text-gray-500">Carregando financeiro...</td></tr>
+                    ) : filteredTransactions.length === 0 ? (
+                        <tr><td colSpan="4" className="p-8 text-center text-gray-500">Nenhum registro encontrado.</td></tr>
                     ) : (
-                        filteredSales.map((sale) => (
-                            <tr key={sale.id} className="hover:bg-green-50/30 transition-colors group">
-                                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar size={14} className="text-gray-400"/>
-                                        {new Date(sale.data_venda).toLocaleDateString('pt-BR')}
-                                    </div>
-                                    <span className="text-xs text-gray-400 ml-6">
-                                        {new Date(sale.data_venda).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                        filteredTransactions.map((t) => (
+                            <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="p-4 text-gray-500">{fDate(t.data)}</td>
+                                <td className="p-4 font-medium text-gray-800">{t.descricao}</td>
+                                <td className="p-4">
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${t.tipo === 'entrada' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                        {t.origem}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <User size={16} className="text-gray-400 group-hover:text-green-600"/>
-                                        <div>
-                                            <p className="font-medium text-gray-800">{sale.cliente_nome}</p>
-                                            <p className="text-xs text-gray-400">{sale.cpf_cnpj}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <Car size={16} className="text-gray-400 group-hover:text-green-600"/>
-                                        <div>
-                                            <p className="font-medium text-gray-800">{sale.veiculo_modelo}</p>
-                                            <p className="text-xs text-gray-500 bg-gray-100 px-1.5 rounded inline-block mt-0.5 border border-gray-200 uppercase font-mono">
-                                                {sale.veiculo_placa}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                                        {sale.metodo_pagamento}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <p className="font-bold text-green-700">
-                                        R$ {Number(sale.valor_venda).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                    </p>
-                                    {(Number(sale.entrada) > 0) && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Entrada: R$ {Number(sale.entrada).toLocaleString('pt-BR')}
-                                        </p>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button 
-                                            onClick={() => setSelectedSaleForPrint(sale.id)}
-                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                                            title="Imprimir Recibo/Contrato"
-                                        >
-                                            <Printer size={18}/>
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDeleteSale(sale)}
-                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                                            title="Cancelar Venda (Devolver ao Estoque)"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
+                                <td className={`p-4 font-bold text-right ${t.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {t.tipo === 'entrada' ? '+' : '-'} {fMoney(t.valor)}
                                 </td>
                             </tr>
                         ))

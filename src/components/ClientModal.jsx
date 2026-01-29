@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
   // Estado inicial vazio
@@ -7,24 +7,33 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
     nome: '',
     tipo: 'PF', // PF ou PJ
     cpf_cnpj: '',
-    rg: '', // Novo
-    data_nascimento: '', // Novo
+    rg: '',
+    data_nascimento: '',
     email: '',
     telefone: '',
-    data_cadastro: new Date().toISOString().split('T')[0], // Novo (Padrão: Hoje)
+    data_cadastro: new Date().toISOString().split('T')[0], // Padrão: Hoje
     cep: '',
     endereco: '',
     numero: '',
-    bairro: '', // Novo
+    bairro: '',
     cidade: '',
     estado: ''
   };
 
   const [formData, setFormData] = useState(initialFormState);
 
+  // --- CORREÇÃO AQUI ---
+  // Quando carregamos os dados para editar, precisamos cortar a data (split)
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        ...initialData,
+        // Se existir data, pega só a parte YYYY-MM-DD (antes do T)
+        data_nascimento: initialData.data_nascimento ? initialData.data_nascimento.split('T')[0] : '',
+        data_cadastro: initialData.data_cadastro ? initialData.data_cadastro.split('T')[0] : initialFormState.data_cadastro,
+        // Garante que estado nunca seja null/undefined
+        estado: initialData.estado || ''
+      });
     } else {
       setFormData(initialFormState);
     }
@@ -138,7 +147,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
                     <div className="md:col-span-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">RG</label>
                         <input
-                            type="text" name="rg" value={formData.rg} onChange={handleChange}
+                            type="text" name="rg" value={formData.rg || ''} onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000] focus:border-transparent"
                         />
                     </div>
@@ -183,7 +192,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div className="md:col-span-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
               <input
-                type="text" name="cep" value={formData.cep} onChange={handleChange}
+                type="text" name="cep" value={formData.cep || ''} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000] focus:border-transparent"
               />
             </div>
@@ -199,7 +208,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
              <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
               <input
-                type="text" name="numero" value={formData.numero} onChange={handleChange}
+                type="text" name="numero" value={formData.numero || ''} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000] focus:border-transparent"
               />
             </div>
@@ -207,7 +216,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div className="md:col-span-5">
                <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
                <input
-                type="text" name="bairro" value={formData.bairro} onChange={handleChange}
+                type="text" name="bairro" value={formData.bairro || ''} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000] focus:border-transparent"
               />
             </div>
@@ -215,7 +224,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div className="md:col-span-5">
                <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
                <input
-                type="text" name="cidade" value={formData.cidade} onChange={handleChange}
+                type="text" name="cidade" value={formData.cidade || ''} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000] focus:border-transparent"
               />
             </div>
@@ -225,7 +234,6 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
                 <input
                     type="text" 
                     name="estado" 
-                    // O segredo está aqui: (formData.estado || '') garante que nunca seja null
                     value={formData.estado || ''} 
                     onChange={(e) => {
                         const val = e.target.value.toUpperCase().slice(0, 2);

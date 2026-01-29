@@ -1,16 +1,16 @@
 import axios from 'axios';
 
-// --- CONFIGURAÇÃO DEFINITIVA DA URL ---
-// Apontando diretamente para o IP da sua VPS na porta 5001
-const API_URL = 'http://72.60.244.108:5001';
+// --- CONFIGURAÇÃO DINÂMICA DA URL ---
+// O import.meta.env.VITE_API_URL pega o valor do arquivo .env
+// O '||' serve de fallback: se não tiver .env, tenta localhost
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// --- CORREÇÃO DO ERRO DO DASHBOARD ---
-// Exportamos a URL também com o nome 'API_BASE_URL' para satisfazer 
-// os arquivos que importam ela (como o Dashboard.jsx)
+// Exportamos a constante para quem precisa da string pura (ex: Dashboard, Imagens)
 export const API_BASE_URL = API_URL;
 
-console.log('--- DEBUG KADILAC ---');
-console.log('API Base URL:', API_URL);
+// Debug para você conferir no console do navegador se pegou certo
+console.log('--- AMBIENTE KADILAC ---');
+console.log('Conectando na API:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -19,7 +19,7 @@ const api = axios.create({
   },
 });
 
-// Interceptor para adicionar o token automaticamente
+// Interceptor: Adiciona o Token automaticamente em toda requisição
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('kadilac_token');
   if (token) {
@@ -28,18 +28,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor para tratar erros de resposta
+// Interceptor: Trata erros globais (Token expirado ou servidor fora)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.code === "ERR_NETWORK") {
-      console.error(`ERRO DE CONEXÃO: Não foi possível contactar o servidor em ${API_URL}`);
+      console.error(`ERRO CRÍTICO: Não foi possível conectar ao servidor em ${API_URL}`);
+      // Opcional: alert("Sem conexão com o servidor. Verifique sua internet.");
     } else if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      console.warn('Sessão expirada. Limpando dados...');
-      localStorage.removeItem('kadilac_token');
-      localStorage.removeItem('kadilac_user');
-      if (!window.location.pathname.includes('/login')) {
-         window.location.href = '/'; 
+      // Se o erro for de autenticação e NÃO for na tela de login, desloga o usuário
+      const isLoginPage = window.location.pathname.includes('/login');
+      
+      if (!isLoginPage) {
+          console.warn('Sessão expirada. Redirecionando para login...');
+          localStorage.removeItem('kadilac_token');
+          localStorage.removeItem('kadilac_user');
+          window.location.href = '/'; 
       }
     }
     return Promise.reject(error);

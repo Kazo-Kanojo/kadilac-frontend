@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Search, UserPlus, Edit, Trash2, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail } from 'lucide-react';
 import ClientModal from './ClientModal';
-// ALTERAÇÃO 1: Importar api (axios) em vez de API_BASE_URL
-import api from '../api';
+import api from '../api'; // Importando sua instância configurada do Axios
 
 const Clientes = () => {
-  // Estados de Dados
+  // --- ESTADOS ---
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
   const [clientHistory, setClientHistory] = useState([]); 
@@ -24,15 +23,12 @@ const Clientes = () => {
   const fetchClients = async () => {
     setIsLoading(true);
     try {
-      // ALTERAÇÃO 2: Usar api.get. O axios trata o erro 401 automaticamente (evita o crash do .map)
+      // Usa a instância 'api' que já tem a BaseURL e o Token configurados
       const response = await api.get('/clientes');
-      
-      // O axios retorna os dados em .data
       setClients(response.data);
       setFilteredClients(response.data);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
-      // Se der erro, mantemos a lista vazia para não quebrar a tela
       setClients([]);
       setFilteredClients([]);
     } finally {
@@ -49,20 +45,19 @@ const Clientes = () => {
     if (selectedClient && activeTab === 'historico') {
         const fetchHistory = async () => {
             try {
-                // ALTERAÇÃO 3: Usar api.get
                 const res = await api.get(`/clientes/${selectedClient.id}/vendas`);
                 setClientHistory(res.data);
             } catch (error) {
                 console.error("Erro ao buscar histórico", error);
+                setClientHistory([]); // Limpa se der erro
             }
         };
         fetchHistory();
     }
   }, [selectedClient, activeTab]);
 
-  // --- FILTRO DE BUSCA (Mantido igual) ---
+  // --- FILTRO DE BUSCA ---
   useEffect(() => {
-    // Verificação de segurança: garante que clients é um array antes de filtrar
     if (!Array.isArray(clients)) return;
 
     const lowerTerm = searchTerm.toLowerCase();
@@ -97,7 +92,6 @@ const Clientes = () => {
     // eslint-disable-next-line no-restricted-globals
     if (confirm(`Tem certeza que deseja excluir ${selectedClient.nome}?`)) {
       try {
-        // ALTERAÇÃO 4: Usar api.delete
         await api.delete(`/clientes/${selectedClient.id}`);
         fetchClients();
         setSelectedClient(null);
@@ -107,25 +101,29 @@ const Clientes = () => {
     }
   };
 
+  // --- FUNÇÃO DE SALVAR (CORRIGIDA) ---
   const handleSaveClient = async (clientData) => {
     try {
-      // ALTERAÇÃO 5: Usar api.post ou api.put dependendo do modo
-      if (modalMode === 'create') {
-        await api.post('/clientes', clientData);
-      } else {
+      // Verifica se é edição baseado no Modo ou se tem um cliente selecionado
+      if (modalMode === 'edit' && selectedClient) {
+        // ATUALIZAR (PUT)
         await api.put(`/clientes/${selectedClient.id}`, clientData);
+      } else {
+        // CRIAR NOVO (POST)
+        // Envia o objeto COMPLETO (clientData) sem filtrar campos
+        await api.post('/clientes', clientData);
       }
-      
-      fetchClients();
+
+      // Atualiza a lista e fecha o modal
+      await fetchClients(); 
       setIsModalOpen(false);
       
-      // Se estava editando, atualiza os dados do painel selecionado também
-      if (modalMode === 'edit') {
-          setSelectedClient({...selectedClient, ...clientData});
-      }
+      // Fecha o painel de detalhes se estava editando, para forçar atualização visual se reabrir
+      if (modalMode === 'create') setSelectedClient(null);
+      
     } catch (error) {
-      console.error(error);
-      alert("Erro ao salvar cliente: " + (error.response?.data?.error || error.message));
+      console.error("Erro ao salvar:", error);
+      alert('Erro ao salvar cliente. Verifique se todos os campos obrigatórios estão preenchidos.');
     }
   };
 

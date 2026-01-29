@@ -27,8 +27,8 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
 
   useEffect(() => {
     if (initialData && mode === 'edit') {
-      // FUNÇÃO AUXILIAR: Tenta pegar o valor de várias chaves possíveis
-      // Isso resolve o problema de 'data_entrada' vs 'dataEntrada'
+      // FUNÇÃO AUXILIAR INTELIGENTE
+      // Procura o valor em várias chaves (ex: 'valor' OU 'preco_venda')
       const getVal = (keys, fallback = '') => {
         for (let key of keys) {
           if (initialData[key] !== undefined && initialData[key] !== null) {
@@ -52,8 +52,13 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
         ano: getVal(['ano']),
         cor: getVal(['cor']),
         combustivel: getVal(['combustivel'], 'Flex'),
-        valor: getVal(['valor'], ''),
-        custo: getVal(['custo'], ''),
+        
+        // CORREÇÃO: Mapeia também os nomes do banco de dados (preco_venda, imagem, descricao)
+        valor: getVal(['valor', 'preco_venda'], ''),
+        custo: getVal(['custo', 'preco_compra'], ''),
+        foto: getVal(['foto', 'imagem']), // Pega a foto mesmo se vier como 'imagem'
+        observacoes: getVal(['observacoes', 'descricao']), // Pega observação mesmo se vier como 'descricao'
+        
         dataEntrada: dataFormatada,
         operacao: getVal(['operacao'], 'Compra'),
         proprietario: getVal(['proprietario_anterior', 'proprietario']),
@@ -62,9 +67,7 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
         chassi: getVal(['chassi']),
         certificado: getVal(['certificado']),
         opcionais: getVal(['opcionais']),
-        observacoes: getVal(['observacoes']),
         status: getVal(['status'], 'Em estoque'),
-        foto: getVal(['foto']) // Carrega a foto existente (URL ou Base64)
       });
     } else {
       // RESET PARA CRIAR NOVO
@@ -86,15 +89,14 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Verifica tamanho do arquivo (limite de 2MB para evitar travar o envio)
-      if (file.size > 2 * 1024 * 1024) {
-        alert("A imagem é muito grande! Escolha uma imagem menor que 2MB.");
+      // Aumentei o limite de verificação no front para 5MB (o server aceita 50MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("A imagem é muito grande! Escolha uma imagem menor que 5MB.");
         return;
       }
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        // O resultado aqui é uma string longa (data:image/jpeg;base64,...)
         setFormData(prev => ({ ...prev, foto: reader.result }));
       };
       reader.readAsDataURL(file);
@@ -104,19 +106,18 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Prepara os dados convertendo para o formato correto do Banco
     const dadosParaEnviar = {
       ...formData,
-      // Garante envio de números
       valor: formData.valor ? parseFloat(formData.valor) : 0,
       custo: formData.custo ? parseFloat(formData.custo) : 0,
       
-      // Mapeia nomes para o backend (snake_case)
+      // Converte nomes para o backend salvar certo
       data_entrada: formData.dataEntrada,
       proprietario_anterior: formData.proprietario,
-      
-      // Envia a foto explicitamente
-      foto: formData.foto 
+      preco_venda: formData.valor, // Garante envio duplicado para garantir
+      preco_compra: formData.custo,
+      descricao: formData.observacoes,
+      imagem: formData.foto // Envia como imagem também
     };
 
     onSave(dadosParaEnviar);
@@ -126,9 +127,9 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar">
         
-        <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl sticky top-0 z-10">
           <h2 className="text-xl font-bold text-gray-800">
             {mode === 'create' ? 'Cadastrar Novo Veículo' : 'Editar Veículo'}
           </h2>
@@ -160,15 +161,9 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
                     <p className="text-sm text-gray-500">Clique para adicionar foto</p>
                   </div>
                 )}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*"
-                  onChange={handleFileChange} 
-                />
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
               </div>
-              <p className="text-[10px] text-gray-400 text-center mt-1">Máx: 2MB</p>
+              <p className="text-[10px] text-gray-400 text-center mt-1">Recomendado: JPG/PNG</p>
             </div>
 
             <div className="col-span-2 grid grid-cols-2 gap-4">
@@ -211,17 +206,9 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
           {/* Seção 2: Documentação e Origem */}
           <h3 className="text-sm font-bold text-blue-800 mb-4 bg-blue-50 p-2 rounded w-fit px-4">Documentação & Origem</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            
             <div className="col-span-2">
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Proprietário Anterior (Cliente)</label>
-              <input 
-                list="clientes-list" 
-                name="proprietario" 
-                value={formData.proprietario} 
-                onChange={handleChange} 
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Selecione da lista ou digite..." 
-              />
+              <input list="clientes-list" name="proprietario" value={formData.proprietario} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Selecione da lista ou digite..." />
               <datalist id="clientes-list">
                 {clientsList.map(cli => (
                   <option key={cli.id} value={cli.nome}>{cli.cpf_cnpj}</option>
@@ -246,13 +233,7 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase text-blue-600">Certificado (CRV/ATPV)</label>
-              <input 
-                name="certificado" 
-                value={formData.certificado} 
-                onChange={handleChange} 
-                className="w-full p-2 border border-blue-200 bg-blue-50 rounded focus:ring-2 focus:ring-blue-500 outline-none font-medium" 
-                placeholder="Nº do Certificado"
-              />
+              <input name="certificado" value={formData.certificado} onChange={handleChange} className="w-full p-2 border border-blue-200 bg-blue-50 rounded focus:ring-2 focus:ring-blue-500 outline-none font-medium" placeholder="Nº do Certificado" />
             </div>
           </div>
 
@@ -287,12 +268,8 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors font-medium">
-              Cancelar
-            </button>
-            <button type="submit" className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-bold flex items-center gap-2 shadow-lg shadow-blue-200">
-              <Save size={18} /> Salvar Veículo
-            </button>
+            <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
+            <button type="submit" className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-bold flex items-center gap-2 shadow-lg shadow-blue-200"><Save size={18} /> Salvar Veículo</button>
           </div>
 
         </form>
