@@ -6,7 +6,7 @@ import Clientes from './components/clientes';
 import NovaFicha from './components/NovaFicha';
 import Financeiro from './components/Financeiro';
 import Configuracoes from './components/Configuracoes';
-import Login from './components/Login'; // <--- Importamos o Login
+import Login from './components/login';
 import { Settings, Menu } from 'lucide-react';
 
 function App() {
