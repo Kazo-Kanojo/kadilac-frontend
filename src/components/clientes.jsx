@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, UserPlus, Edit, Trash2, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail } from 'lucide-react';
+import { Search, UserPlus, Edit, Trash2, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail, MessageCircle } from 'lucide-react';
 import ClientModal from './ClientModal';
-import api from '../api'; // Importando sua instância configurada do Axios
+import api from '../api'; 
 
 const Clientes = () => {
   // --- ESTADOS ---
@@ -23,7 +23,6 @@ const Clientes = () => {
   const fetchClients = async () => {
     setIsLoading(true);
     try {
-      // Usa a instância 'api' que já tem a BaseURL e o Token configurados
       const response = await api.get('/clientes');
       setClients(response.data);
       setFilteredClients(response.data);
@@ -49,7 +48,7 @@ const Clientes = () => {
                 setClientHistory(res.data);
             } catch (error) {
                 console.error("Erro ao buscar histórico", error);
-                setClientHistory([]); // Limpa se der erro
+                setClientHistory([]); 
             }
         };
         fetchHistory();
@@ -101,24 +100,17 @@ const Clientes = () => {
     }
   };
 
-  // --- FUNÇÃO DE SALVAR (CORRIGIDA) ---
   const handleSaveClient = async (clientData) => {
     try {
-      // Verifica se é edição baseado no Modo ou se tem um cliente selecionado
       if (modalMode === 'edit' && selectedClient) {
-        // ATUALIZAR (PUT)
         await api.put(`/clientes/${selectedClient.id}`, clientData);
       } else {
-        // CRIAR NOVO (POST)
-        // Envia o objeto COMPLETO (clientData) sem filtrar campos
         await api.post('/clientes', clientData);
       }
 
-      // Atualiza a lista e fecha o modal
       await fetchClients(); 
       setIsModalOpen(false);
       
-      // Fecha o painel de detalhes se estava editando, para forçar atualização visual se reabrir
       if (modalMode === 'create') setSelectedClient(null);
       
     } catch (error) {
@@ -127,7 +119,18 @@ const Clientes = () => {
     }
   };
 
-  // Função auxiliar para formatar data
+  // --- FUNÇÃO PARA ABRIR WHATSAPP ---
+  const openWhatsApp = (phone) => {
+    if (!phone) return;
+    // Remove tudo que não for número (espaços, traços, parenteses)
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // Se tiver 10 ou 11 dígitos (ex: 11999999999), assume que é Brasil e adiciona 55
+    const finalPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+    
+    window.open(`https://wa.me/${finalPhone}`, '_blank');
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
@@ -207,7 +210,22 @@ const Clientes = () => {
                     >
                         <td className="p-3 font-bold">{client.nome}</td>
                         <td className="p-3">{client.cpf_cnpj}</td>
-                        <td className="p-3">{client.telefone}</td>
+                        {/* COLUNA TELEFONE COM WHATSAPP */}
+                        <td className="p-3 flex items-center gap-2">
+                            <span>{client.telefone}</span>
+                            {client.telefone && (
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Evita selecionar a linha ao clicar no zap
+                                        openWhatsApp(client.telefone);
+                                    }}
+                                    className="p-1 bg-green-100 text-green-600 rounded-full hover:bg-green-500 hover:text-white transition-colors"
+                                    title="Chamar no WhatsApp"
+                                >
+                                    <MessageCircle size={14} />
+                                </button>
+                            )}
+                        </td>
                         <td className="p-3">{client.cidade} - {client.estado}</td>
                         <td className="p-3 text-gray-500">{client.email || '-'}</td>
                     </tr>
@@ -260,7 +278,21 @@ const Clientes = () => {
                             <div className="flex items-center gap-2 text-gray-500 font-bold border-b pb-1">
                                 <Phone size={16}/> Contato
                             </div>
-                            <p><span className="text-gray-500 w-24 inline-block">Telefone:</span> {selectedClient.telefone}</p>
+                            
+                            {/* TELEFONE COM BOTÃO GRANDE DE WHATSAPP */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-gray-500 w-24 inline-block">Telefone:</span> 
+                                <span className="font-medium">{selectedClient.telefone}</span>
+                                {selectedClient.telefone && (
+                                    <button 
+                                        onClick={() => openWhatsApp(selectedClient.telefone)}
+                                        className="flex items-center gap-1 bg-green-500 text-white px-2 py-0.5 rounded text-xs font-bold hover:bg-green-600 transition-colors shadow-sm ml-2"
+                                    >
+                                        <MessageCircle size={12} fill="currentColor" /> Chamar
+                                    </button>
+                                )}
+                            </div>
+
                             <p className="flex items-center gap-1">
                                 <span className="text-gray-500 w-24 inline-block">Email:</span> 
                                 {selectedClient.email ? (
