@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel, Wrench, DollarSign, TrendingUp, FileText } from 'lucide-react';
+import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel, Wrench, DollarSign, TrendingUp, FileText, Paperclip, Download, Eye, Plus } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
-// ALTERAÇÃO 1: Importar 'api' para comunicações autenticadas
+import DocumentosModal from './DocumentosModal';
 import api from '../api'; 
 
 const Estoque = () => {
@@ -21,26 +21,25 @@ const Estoque = () => {
   // Estados dos Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [selectedVehicleDocs, setSelectedVehicleDocs] = useState(null);
   const [modalMode, setModalMode] = useState('create');
   
   // Estado para controlar o modal de despesas
   const [selectedVehicleForExpenses, setSelectedVehicleForExpenses] = useState(null);
   
-  // Estado para guardar o resumo financeiro (Despesas carregadas)
+  // Estado para guardar o resumo financeiro e documentos
   const [financeiroData, setFinanceiroData] = useState({ despesas: [], totalDespesas: 0 });
+  const [vehicleDocsList, setVehicleDocsList] = useState([]); // [NOVO] Lista para a aba de documentos
 
-  // --- CARREGAR DADOS DA API (Veículos e Clientes) ---
+  // --- CARREGAR DADOS DA API ---
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      
-      // ALTERAÇÃO 2: Usar api.get (envia token automaticamente)
       const [vehiclesRes, clientsRes] = await Promise.all([
         api.get('/veiculos'),
         api.get('/clientes')
       ]);
 
-      // ALTERAÇÃO 3: Axios retorna dados em .data (não precisa de .json())
       setVehicles(vehiclesRes.data);
       setFilteredVehicles(vehiclesRes.data);
       setClients(clientsRes.data);
@@ -56,23 +55,42 @@ const Estoque = () => {
     fetchData();
   }, []);
 
-  // --- BUSCAR DESPESAS QUANDO A ABA FINANCEIRO É ABERTA ---
+  // --- BUSCAR DADOS SOB DEMANDA (FINANCEIRO E DOCUMENTOS) ---
   useEffect(() => {
-    if (selectedCar && activeTab === 'financeiro') {
+    if (!selectedCar) return;
+
+    // Busca Despesas
+    if (activeTab === 'financeiro') {
         const fetchDespesas = async () => {
             try {
-                // ALTERAÇÃO 4: Substituir fetch por api.get
                 const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
                 const data = res.data;
                 const total = data.reduce((acc, item) => acc + Number(item.valor), 0);
                 setFinanceiroData({ despesas: data, totalDespesas: total });
-            } catch (error) {
-                console.error("Erro ao carregar financeiro", error);
-            }
+            } catch (error) { console.error(error); }
         };
         fetchDespesas();
     }
+
+    // [NOVO] Busca Documentos quando a aba é ativada
+    if (activeTab === 'documentos') {
+        const fetchDocs = async () => {
+            try {
+                const res = await api.get(`/veiculos/${selectedCar.id}/documentos`);
+                setVehicleDocsList(Array.isArray(res.data) ? res.data : []);
+            } catch (error) { console.error("Erro ao buscar docs", error); }
+        };
+        fetchDocs();
+    }
   }, [selectedCar, activeTab]);
+
+  // Função auxiliar para abrir documento
+  const handleOpenDoc = (doc) => {
+    const win = window.open();
+    win.document.write(
+        `<iframe src="${doc.arquivo}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+    );
+  };
 
   // --- AÇÕES ---
 
@@ -98,16 +116,12 @@ const Estoque = () => {
     // eslint-disable-next-line no-restricted-globals
     if (confirm(`Tem certeza que deseja excluir o veículo ${selectedCar.modelo}?`)) {
         try {
-            // ALTERAÇÃO 5: Substituir fetch DELETE por api.delete
             await api.delete(`/veiculos/${selectedCar.id}`);
-            
             const updatedList = vehicles.filter(v => v.id !== selectedCar.id);
             setVehicles(updatedList);
             setFilteredVehicles(updatedList);
             setSelectedCar(null);
-            
         } catch (error) {
-            console.error("Erro ao excluir:", error);
             alert("Erro ao excluir: " + (error.response?.data?.message || error.message));
         }
     }
@@ -116,38 +130,25 @@ const Estoque = () => {
   const handleSaveVehicle = async (data) => {
     try {
         let updatedList;
-        // Se modalMode for 'create', cria novo (POST)
         if (modalMode === 'create') {
-            // ALTERAÇÃO 6: Substituir fetch POST por api.post
             const response = await api.post('/veiculos', data);
-            const newVehicle = response.data;
-            updatedList = [newVehicle, ...vehicles];
-        } 
-        // Se modalMode for 'edit', atualiza existente (PUT)
-        else {
-            if (!selectedCar || !selectedCar.id) {
-                alert("Erro: Nenhum veículo selecionado para edição.");
-                return;
-            }
-            // ALTERAÇÃO 7: Substituir fetch PUT por api.put
+            updatedList = [response.data, ...vehicles];
+        } else {
+            if (!selectedCar || !selectedCar.id) return;
             await api.put(`/veiculos/${selectedCar.id}`, data);
-            
             const updatedCar = { ...selectedCar, ...data }; 
             updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
             setSelectedCar(updatedCar);
         }
-        
         setVehicles(updatedList);
         setFilteredVehicles(updatedList);
         setIsModalOpen(false);
-        
     } catch (error) {
         console.error("Erro ao salvar:", error);
         alert("Erro ao salvar dados.");
     }
   };
 
-  // --- FUNÇÃO ATUALIZADA DE FECHAMENTO DE VENDA ---
   const confirmCloseFicha = async (saleData) => {
      try {
         const payload = {
@@ -157,29 +158,18 @@ const Estoque = () => {
             data_venda: saleData.data_venda,
             vendedor: saleData.vendedor,
             metodo_pagamento: saleData.metodo_pagamento,
-            entrada: 0, 
-            financiado: 0,
+            entrada: 0, financiado: 0,
             observacoes: `Venda Fechada via Estoque. Obs: ${saleData.observacoes || ''}`
         };
 
-        // ALTERAÇÃO 8: Substituir fetch POST por api.post
         await api.post('/vendas', payload);
-
-        // Atualiza a lista localmente
-        const updatedList = vehicles.map(v => 
-            v.id === selectedCar.id ? { ...v, status: 'Vendido' } : v
-        );
-        
+        const updatedList = vehicles.map(v => v.id === selectedCar.id ? { ...v, status: 'Vendido' } : v);
         setVehicles(updatedList);
         setFilteredVehicles(updatedList);
-        
         setSelectedCar({ ...selectedCar, status: 'Vendido' });
-        
         setIsCloseModalOpen(false);
         alert("Venda registrada com sucesso!");
-
      } catch (error) {
-        console.error("Erro ao fechar ficha:", error);
         alert("Erro ao fechar o negócio. Verifique os dados.");
      }
   };
@@ -198,7 +188,7 @@ const Estoque = () => {
          
          <button 
             onClick={() => {
-                if (!selectedCar) return alert("Selecione um veículo para gerenciar custos.");
+                if (!selectedCar) return alert("Selecione um veículo.");
                 setSelectedVehicleForExpenses(selectedCar);
             }}
             disabled={!selectedCar}
@@ -207,6 +197,19 @@ const Estoque = () => {
             <Wrench size={24} className="text-yellow-600 mb-1 group-hover:scale-110 transition-transform"/>
             <span className="text-xs font-bold text-gray-600">Custos</span>
          </button>
+
+         {/* BOTÃO DA BARRA SUPERIOR (Atalho para o Modal) */}
+         <button 
+              onClick={() => {
+                if (!selectedCar) return alert("Selecione um veículo.");
+                setSelectedVehicleDocs(selectedCar);
+              }}
+              disabled={!selectedCar}
+              className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-50 hover:border-indigo-200'}`}
+              title="Gerenciar Documentos">
+              <Paperclip size={24} className='mb-1 text-indigo-600 group-hover:scale-110 transition-transform'/>
+              <span className='text-xs font-bold text-gray-600'>Docs</span>
+          </button>
 
          <button onClick={handleEditCar} disabled={!selectedCar} className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-200'}`}>
             <Edit size={24} className="text-orange-500 mb-1 group-hover:scale-110 transition-transform"/>
@@ -268,9 +271,7 @@ const Estoque = () => {
                       <td className="p-3">
                         {car.data_entrada 
                            ? new Date(car.data_entrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
-                           : car.dataEntrada 
-                               ? new Date(car.dataEntrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
-                               : '-'}
+                           : car.dataEntrada ? new Date(car.dataEntrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
                       </td>
                       <td className="p-3 uppercase">{car.modelo}</td>
                       <td className="p-3">{car.cor}</td>
@@ -278,10 +279,7 @@ const Estoque = () => {
                       <td className="p-3 uppercase font-mono">{car.placa}</td>
                       <td className="p-3">R$ {Number(car.valor).toLocaleString()}</td>
                       <td className="p-3 text-center">
-                        <div className={`w-3 h-3 rounded-full mx-auto ${
-                          car.status === 'Em estoque' ? 'bg-green-500' :
-                          car.status === 'Vendido' ? 'bg-red-500' : 'bg-yellow-500'
-                        }`} title={car.status}></div>
+                        <div className={`w-3 h-3 rounded-full mx-auto ${car.status === 'Em estoque' ? 'bg-green-500' : car.status === 'Vendido' ? 'bg-red-500' : 'bg-yellow-500'}`} title={car.status}></div>
                       </td>
                     </tr>
                   ))
@@ -291,188 +289,201 @@ const Estoque = () => {
         </div>
       </div>
 
-      {/* PAINEL INFERIOR DE DETALHES */}
+      {/* PAINEL INFERIOR DE DETALHES (A PARTE QUE SOBE) */}
       {selectedCar && (
-        <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-inner mt-2 z-20">
-          <div className="flex border-b bg-gray-100 overflow-x-auto">
+        <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-[0_-5px_20px_rgba(0,0,0,0.1)] mt-2 z-20">
+          
+          {/* ABAS DO PAINEL */}
+          <div className="flex border-b bg-gray-50 overflow-x-auto">
             {['Detalhes', 'Financeiro'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab.toLowerCase())}
-                className={`px-6 py-3 text-sm font-bold border-r border-gray-300 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'bg-white text-kadilac-500 border-t-2 border-t-kadilac-500' : 'text-gray-500 hover:bg-gray-200'}`}
+                className={`px-6 py-3 text-sm font-bold border-r border-gray-200 whitespace-nowrap transition-colors ${activeTab === tab.toLowerCase() ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}
               >
                 {tab === 'Financeiro' ? 'Financeiro / Despesas' : tab}
               </button>
             ))}
             <button 
               onClick={() => setActiveTab('fotos')}
-              className={`px-6 py-3 text-sm font-bold border-r border-gray-300 flex items-center gap-2 whitespace-nowrap ${activeTab === 'fotos' ? 'bg-white text-kadilac-500 border-t-2 border-t-kadilac-500' : 'text-gray-500 hover:bg-gray-200'}`}
+              className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'fotos' ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}
             >
               <Camera size={14}/> Fotos
             </button>
-            <div className="flex-1 flex justify-end items-center pr-4 bg-gray-100 min-w-[50px]">
-               <button onClick={() => setSelectedCar(null)} className="text-gray-500 hover:text-red-600"><ChevronDown/></button>
+            
+            {/* [NOVA ABA] DOCUMENTOS / ARQUIVOS */}
+            <button 
+              onClick={() => setActiveTab('documentos')}
+              className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'documentos' ? 'bg-white text-indigo-600 border-t-2 border-t-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}
+            >
+              <Paperclip size={14}/> Arquivos
+            </button>
+
+            <div className="flex-1 flex justify-end items-center pr-4 bg-gray-50 min-w-[50px]">
+               <button onClick={() => setSelectedCar(null)} className="text-gray-400 hover:text-red-600 p-1 hover:bg-gray-200 rounded transition-colors"><ChevronDown/></button>
             </div>
           </div>
 
+          {/* CONTEÚDO DO PAINEL */}
           <div className="p-4 overflow-auto flex-1 bg-white max-h-[40vh] md:max-h-none">
+            
+            {/* 1. DETALHES */}
             {activeTab === 'detalhes' && (
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-                
-                {/* Coluna 1: Dados Principais */}
-                <div className="space-y-2">
-                   <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Modelo:</span> <span className="font-bold uppercase">{selectedCar.modelo}</span></div>
-                   <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Placa:</span> <span className="font-bold uppercase">{selectedCar.placa}</span></div>
-                   
-                   <div className="flex justify-between border-b border-gray-100 pb-1">
-                        <span className="text-gray-500 flex items-center gap-1"><Fuel size={12}/> Combustível:</span> 
-                        <span>{selectedCar.combustivel || '-'}</span>
-                   </div>
-                   
-                   <div className="flex justify-between border-b border-gray-100 pb-1">
-                       <span className="text-gray-500">Entrada:</span> 
-                       <span className="font-bold">
-                           {selectedCar.data_entrada ? new Date(selectedCar.data_entrada).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '-'}
-                       </span>
-                   </div>
-                </div>
-
-                {/* Coluna 2: Dados de Origem e Doc */}
-                <div className="space-y-2">
-                   <div className="flex justify-between border-b border-gray-100 pb-1">
-                        <span className="text-gray-500 flex items-center gap-1"><User size={12}/> Proprietário Ant.:</span> 
-                        <span className="uppercase text-gray-700 font-medium">{selectedCar.proprietario_anterior || '-'}</span>
-                   </div>
-                   <div className="flex justify-between border-b border-gray-100 pb-1">
-                       <span className="text-gray-500">Vendedor (Origem):</span> 
-                       <span className="text-gray-700">{selectedCar.vendedor || '-'}</span>
-                   </div>
-
-                   <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Renavam:</span> <span>{selectedCar.renavam || '-'}</span></div>
-                   <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Chassi:</span> <span>{selectedCar.chassi || '-'}</span></div>
-                   
-                   {/* CAMPO DE VISUALIZAÇÃO: CERTIFICADO */}
-                   <div className="flex justify-between border-b border-gray-100 pb-1 bg-blue-50 px-1 rounded">
-                       <span className="text-blue-700 flex items-center gap-1 font-bold"><FileText size={12}/> Certificado:</span> 
-                       <span className="font-bold text-gray-800">{selectedCar.certificado || '-'}</span>
-                   </div>
-                </div>
-
-                {/* Coluna 3: Observações */}
-                <div className="bg-yellow-50 p-2 border border-yellow-100 rounded text-xs text-gray-600 italic">
-                   <span className="font-semibold block mb-1">Observações:</span>
-                   {selectedCar.observacoes || "Sem observações cadastradas."}
-                </div>
-              </div>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm animate-fade-in">
+                  <div className="space-y-2">
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Modelo:</span> <span className="font-bold uppercase">{selectedCar.modelo}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Placa:</span> <span className="font-bold uppercase">{selectedCar.placa}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500 flex items-center gap-1"><Fuel size={12}/> Combustível:</span> <span>{selectedCar.combustivel || '-'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Entrada:</span> <span className="font-bold">{selectedCar.data_entrada ? new Date(selectedCar.data_entrada).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '-'}</span></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500 flex items-center gap-1"><User size={12}/> Proprietário Ant.:</span> <span className="uppercase text-gray-700 font-medium">{selectedCar.proprietario_anterior || '-'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Vendedor (Origem):</span> <span className="text-gray-700">{selectedCar.vendedor || '-'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Renavam:</span> <span>{selectedCar.renavam || '-'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Chassi:</span> <span>{selectedCar.chassi || '-'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1 bg-blue-50 px-1 rounded"><span className="text-blue-700 flex items-center gap-1 font-bold"><FileText size={12}/> Certificado:</span> <span className="font-bold text-gray-800">{selectedCar.certificado || '-'}</span></div>
+                  </div>
+                  <div className="bg-yellow-50 p-2 border border-yellow-100 rounded text-xs text-gray-600 italic">
+                    <span className="font-semibold block mb-1">Observações:</span>
+                    {selectedCar.observacoes || "Sem observações cadastradas."}
+                  </div>
+               </div>
             )}
 
+            {/* 2. FINANCEIRO */}
             {activeTab === 'financeiro' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  
-                  {/* Card 1: Valor de Compra */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
                   <div className="bg-white p-4 rounded border border-gray-200 shadow-sm flex flex-col justify-between">
-                      <div className="flex items-center gap-2 text-gray-500 mb-2">
-                          <DollarSign size={16} /> <span className="text-xs uppercase font-bold">Valor de Compra</span>
-                      </div>
-                      <span className="text-xl font-bold text-gray-800">
-                          R$ {Number(selectedCar.custo || 0).toLocaleString()}
-                      </span>
+                      <div className="flex items-center gap-2 text-gray-500 mb-2"><DollarSign size={16} /> <span className="text-xs uppercase font-bold">Valor de Compra</span></div>
+                      <span className="text-xl font-bold text-gray-800">R$ {Number(selectedCar.custo || 0).toLocaleString()}</span>
                   </div>
-
-                  {/* Card 2: Despesas (Clicável) */}
-                  <div 
-                    onClick={() => setSelectedVehicleForExpenses(selectedCar)}
-                    className="bg-red-50 p-4 rounded border border-red-100 shadow-sm flex flex-col justify-between cursor-pointer hover:bg-red-100 transition-colors"
-                  >
-                      <div className="flex items-center gap-2 text-red-600 mb-2">
-                          <Wrench size={16} /> <span className="text-xs uppercase font-bold">Total Despesas</span>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <span className="text-xl font-bold text-red-700">
-                            + R$ {financeiroData.totalDespesas.toLocaleString()}
-                        </span>
-                        <span className="text-[10px] bg-red-200 text-red-800 px-2 py-1 rounded">Ver Detalhes</span>
-                      </div>
+                  <div onClick={() => setSelectedVehicleForExpenses(selectedCar)} className="bg-red-50 p-4 rounded border border-red-100 shadow-sm flex flex-col justify-between cursor-pointer hover:bg-red-100 transition-colors">
+                      <div className="flex items-center gap-2 text-red-600 mb-2"><Wrench size={16} /> <span className="text-xs uppercase font-bold">Total Despesas</span></div>
+                      <div className="flex justify-between items-end"><span className="text-xl font-bold text-red-700">+ R$ {financeiroData.totalDespesas.toLocaleString()}</span><span className="text-[10px] bg-red-200 text-red-800 px-2 py-1 rounded">Ver Detalhes</span></div>
                   </div>
-
-                  {/* Card 3: Custo Real Total */}
                   <div className="bg-gray-800 text-white p-4 rounded shadow-md flex flex-col justify-between">
-                      <div className="flex items-center gap-2 text-gray-400 mb-2">
-                          <DollarSign size={16} /> <span className="text-xs uppercase font-bold">Custo Total Real</span>
-                      </div>
-                      <span className="text-2xl font-bold text-white">
-                          R$ {(Number(selectedCar.custo || 0) + financeiroData.totalDespesas).toLocaleString()}
-                      </span>
+                      <div className="flex items-center gap-2 text-gray-400 mb-2"><DollarSign size={16} /> <span className="text-xs uppercase font-bold">Custo Total Real</span></div>
+                      <span className="text-2xl font-bold text-white">R$ {(Number(selectedCar.custo || 0) + financeiroData.totalDespesas).toLocaleString()}</span>
                       <span className="text-[10px] text-gray-400 mt-1">Compra + Despesas</span>
                   </div>
-
-                  {/* Card 4: Preço de Venda / Lucro */}
                   <div className="bg-green-50 p-4 rounded border border-green-100 shadow-sm flex flex-col justify-between">
-                      <div className="flex items-center gap-2 text-green-700 mb-2">
-                          <TrendingUp size={16} /> <span className="text-xs uppercase font-bold">Venda Esperada</span>
-                      </div>
-                      <span className="text-xl font-bold text-green-700">
-                          R$ {Number(selectedCar.valor || 0).toLocaleString()}
-                      </span>
-                      <div className="border-t border-green-200 mt-2 pt-1 flex justify-between">
-                          <span className="text-xs text-green-800">Lucro Est.:</span>
-                          <span className="text-sm font-bold text-green-800">
-                              R$ {(Number(selectedCar.valor || 0) - (Number(selectedCar.custo || 0) + financeiroData.totalDespesas)).toLocaleString()}
-                          </span>
-                      </div>
+                      <div className="flex items-center gap-2 text-green-700 mb-2"><TrendingUp size={16} /> <span className="text-xs uppercase font-bold">Venda Esperada</span></div>
+                      <span className="text-xl font-bold text-green-700">R$ {Number(selectedCar.valor || 0).toLocaleString()}</span>
+                      <div className="border-t border-green-200 mt-2 pt-1 flex justify-between"><span className="text-xs text-green-800">Lucro Est.:</span><span className="text-sm font-bold text-green-800">R$ {(Number(selectedCar.valor || 0) - (Number(selectedCar.custo || 0) + financeiroData.totalDespesas)).toLocaleString()}</span></div>
                   </div>
-
                 </div>
             )}
 
+            {/* 3. FOTOS */}
             {activeTab === 'fotos' && (
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap gap-4 animate-fade-in">
                   <div className="w-full md:w-48 h-32 bg-gray-200 rounded flex items-center justify-center border text-gray-400 text-xs overflow-hidden relative border-gray-300">
-                      {selectedCar.foto ? (
-                          <img 
-                            src={selectedCar.foto} 
-                            alt="Foto do Veículo" 
-                            className="w-full h-full object-cover"
-                          />
-                      ) : (
-                          <div className="flex flex-col items-center">
-                              <Camera size={24} className="mb-1 text-gray-300"/>
-                              <span>Sem Foto</span>
-                          </div>
-                      )}
+                      {selectedCar.foto ? <img src={selectedCar.foto} alt="Foto" className="w-full h-full object-cover"/> : <div className="flex flex-col items-center"><Camera size={24} className="mb-1 text-gray-300"/><span>Sem Foto</span></div>}
                   </div>
               </div>
+            )}
+
+            {/* 4. DOCUMENTOS (NOVA ÁREA) */}
+            {activeTab === 'documentos' && (
+                <div className="animate-fade-in h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                            <Paperclip size={16} className="text-indigo-500"/> Arquivos Anexados
+                        </h3>
+                        {/* Botão para abrir o Modal de Gestão */}
+                        <button 
+                            onClick={() => setSelectedVehicleDocs(selectedCar)}
+                            className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1 shadow-sm"
+                        >
+                            <Plus size={14}/> Novo Arquivo
+                        </button>
+                    </div>
+
+                    {vehicleDocsList.length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-lg p-6 bg-gray-50 text-gray-400">
+                            <FileText size={32} className="mb-2 opacity-50"/>
+                            <p className="text-xs">Nenhum documento encontrado.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {vehicleDocsList.map((doc) => (
+                                <div key={doc.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group">
+                                    <div className="flex items-start gap-3 mb-2">
+                                        <div className={`p-2 rounded ${doc.tipo && doc.tipo.includes('pdf') ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
+                                            <FileText size={20}/>
+                                        </div>
+                                        <div className="overflow-hidden">
+                                            <p className="font-bold text-xs text-gray-700 truncate" title={doc.titulo}>{doc.titulo}</p>
+                                            <p className="text-[10px] text-gray-400">{new Date(doc.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-1 border-t pt-2 border-gray-100">
+                                        <button 
+                                            onClick={() => handleOpenDoc(doc)}
+                                            className="flex-1 flex items-center justify-center gap-1 text-[10px] bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 py-1 rounded transition-colors"
+                                            title="Visualizar"
+                                        >
+                                            <Eye size={12}/> Ver
+                                        </button>
+                                        <a 
+                                            href={doc.arquivo} 
+                                            download={doc.titulo}
+                                            className="flex-1 flex items-center justify-center gap-1 text-[10px] bg-gray-50 hover:bg-green-50 text-gray-600 hover:text-green-600 py-1 rounded transition-colors"
+                                            title="Baixar"
+                                        >
+                                            <Download size={12}/> Baixar
+                                        </a>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             )}
           </div>
         </div>
       )}
 
-      {/* MODAL DE CRIAÇÃO/EDIÇÃO DO VEÍCULO */}
+      {/* --- MODAIS --- */}
       <VehicleModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onSave={handleSaveVehicle}
         initialData={selectedCar}
         mode={modalMode}
-        clientsList={clients} // Passa lista de clientes para o autocomplete de proprietário
+        clientsList={clients} 
       />
 
-      {/* MODAL DE FECHAMENTO DE VENDA (Com Vendedor) */}
       <CloseFileModal 
         isOpen={isCloseModalOpen}
         onClose={() => setIsCloseModalOpen(false)}
         onConfirm={confirmCloseFicha}
         vehicle={selectedCar}
-        clientsList={clients} // Passa lista de clientes para escolher o comprador
+        clientsList={clients}
       />
+
+      {selectedVehicleDocs && (
+        <DocumentosModal 
+            vehicle={selectedVehicleDocs} 
+            onClose={() => {
+                setSelectedVehicleDocs(null);
+                // Atualiza a lista da aba se estivermos na aba documentos
+                if (activeTab === 'documentos' && selectedCar) {
+                    const fetchDocs = async () => {
+                        const res = await api.get(`/veiculos/${selectedCar.id}/documentos`);
+                        setVehicleDocsList(res.data);
+                    };
+                    fetchDocs();
+                }
+            }} 
+        />
+      )}
       
-      {/* MODAL DE DESPESAS */}
       {selectedVehicleForExpenses && (
         <DespesasModal 
             vehicle={selectedVehicleForExpenses}
             onClose={() => {
                 setSelectedVehicleForExpenses(null);
-                // Força recarregar os dados do financeiro ao fechar o modal
                 if(selectedCar && activeTab === 'financeiro') {
                     const fetchDespesas = async () => {
                         const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
