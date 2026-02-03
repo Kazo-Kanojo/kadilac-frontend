@@ -14,6 +14,8 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
     operacao: 'Compra',
     proprietario: '',
     vendedor: '',
+    comprador: '', // Novo campo para exibição
+    dataVenda: '', // Novo campo para exibição
     renavam: '',
     chassi: '',
     certificado: '',
@@ -28,7 +30,6 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
   useEffect(() => {
     if (initialData && mode === 'edit') {
       // FUNÇÃO AUXILIAR INTELIGENTE
-      // Procura o valor em várias chaves (ex: 'valor' OU 'preco_venda')
       const getVal = (keys, fallback = '') => {
         for (let key of keys) {
           if (initialData[key] !== undefined && initialData[key] !== null) {
@@ -38,7 +39,7 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
         return fallback;
       };
 
-      // TRATAMENTO DA DATA
+      // TRATAMENTO DA DATA DE ENTRADA
       let dataFormatada = '';
       const rawDate = getVal(['data_entrada', 'dataEntrada']);
       if (rawDate) {
@@ -53,16 +54,20 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
         cor: getVal(['cor']),
         combustivel: getVal(['combustivel'], 'Flex'),
         
-        // CORREÇÃO: Mapeia também os nomes do banco de dados (preco_venda, imagem, descricao)
         valor: getVal(['valor', 'preco_venda'], ''),
         custo: getVal(['custo', 'preco_compra'], ''),
-        foto: getVal(['foto', 'imagem']), // Pega a foto mesmo se vier como 'imagem'
-        observacoes: getVal(['observacoes', 'descricao']), // Pega observação mesmo se vier como 'descricao'
+        foto: getVal(['foto', 'imagem']), 
+        observacoes: getVal(['observacoes', 'descricao']),
         
         dataEntrada: dataFormatada,
         operacao: getVal(['operacao'], 'Compra'),
         proprietario: getVal(['proprietario_anterior', 'proprietario']),
-        vendedor: getVal(['vendedor']),
+        
+        // Dados da Venda (Vindos da nova Query do Backend)
+        vendedor: getVal(['vendedor']), 
+        comprador: getVal(['cliente_nome']), 
+        dataVenda: getVal(['data_venda']),
+
         renavam: getVal(['renavam']),
         chassi: getVal(['chassi']),
         certificado: getVal(['certificado']),
@@ -74,7 +79,7 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
       setFormData({
         modelo: '', placa: '', ano: '', cor: '', combustivel: 'Flex',
         valor: '', custo: '', dataEntrada: new Date().toISOString().split('T')[0],
-        operacao: 'Compra', proprietario: '', vendedor: '',
+        operacao: 'Compra', proprietario: '', vendedor: '', comprador: '', dataVenda: '',
         renavam: '', chassi: '', certificado: '',
         opcionais: '', observacoes: '', status: 'Em estoque', foto: ''
       });
@@ -89,7 +94,6 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Aumentei o limite de verificação no front para 5MB (o server aceita 50MB)
       if (file.size > 5 * 1024 * 1024) {
         alert("A imagem é muito grande! Escolha uma imagem menor que 5MB.");
         return;
@@ -111,13 +115,12 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
       valor: formData.valor ? parseFloat(formData.valor) : 0,
       custo: formData.custo ? parseFloat(formData.custo) : 0,
       
-      // Converte nomes para o backend salvar certo
       data_entrada: formData.dataEntrada,
       proprietario_anterior: formData.proprietario,
-      preco_venda: formData.valor, // Garante envio duplicado para garantir
+      preco_venda: formData.valor, 
       preco_compra: formData.custo,
       descricao: formData.observacoes,
-      imagem: formData.foto // Envia como imagem também
+      imagem: formData.foto 
     };
 
     onSave(dadosParaEnviar);
@@ -140,6 +143,31 @@ const VehicleModal = ({ isOpen, onClose, onSave, initialData, mode, clientsList 
 
         <form onSubmit={handleSubmit} className="p-6 md:p-8">
           
+          {/* BLOCO DE INFORMAÇÃO DE VENDA (NOVO) */}
+          {formData.status === 'Vendido' && (
+            <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+              <h3 className="font-bold text-green-800 flex items-center gap-2 text-lg mb-3">
+                ✅ Veículo Vendido
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-green-900">
+                <div className="bg-white p-3 rounded border border-green-100">
+                  <span className="block text-xs text-green-600 font-bold uppercase">Vendedor</span>
+                  <span className="font-medium text-base">{formData.vendedor || 'Não informado'}</span>
+                </div>
+                <div className="bg-white p-3 rounded border border-green-100">
+                  <span className="block text-xs text-green-600 font-bold uppercase">Comprador</span>
+                  <span className="font-medium text-base">{formData.comprador || 'Não informado'}</span>
+                </div>
+                <div className="bg-white p-3 rounded border border-green-100">
+                  <span className="block text-xs text-green-600 font-bold uppercase">Data da Venda</span>
+                  <span className="font-medium text-base">
+                    {formData.dataVenda ? new Date(formData.dataVenda).toLocaleDateString() : '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Seção 1: Dados Básicos e Foto */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div className="col-span-1">

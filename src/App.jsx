@@ -7,6 +7,7 @@ import NovaFicha from './components/NovaFicha';
 import Financeiro from './components/Financeiro';
 import Configuracoes from './components/Configuracoes';
 import Login from './components/login';
+import SuperAdmin from './components/SuperAdmin'; // Importação do componente
 import { Menu } from 'lucide-react';
 import api from './api';
 
@@ -14,37 +15,39 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   
-  // [MUDANÇA 1] Estado para o Logo
+  // Estado para o Logo e Nome da Loja
   const [storeName, setStoreName] = useState('Sistema de Gestão'); 
   const [storeLogo, setStoreLogo] = useState(null); 
 
   const [activeScreen, setActiveScreen] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Verifica autenticação ao carregar
   useEffect(() => {
     const token = localStorage.getItem('kadilac_token');
     if (token) setIsAuthenticated(true);
     setIsLoadingAuth(false);
   }, []);
 
+  // Busca dados da loja (Nome e Logo)
   const refreshStoreData = () => {
     if (isAuthenticated) {
         api.get('/config')
-           .then(res => {
-               if (res.data) {
-                   // Atualiza Nome
-                   if (res.data.nome_loja) {
-                       setStoreName(res.data.nome_loja);
-                       localStorage.setItem('store_name', res.data.nome_loja);
-                   }
-                   // [MUDANÇA 2] Atualiza Logo
-                   if (res.data.logo) {
-                       setStoreLogo(res.data.logo);
-                       localStorage.setItem('store_logo', res.data.logo);
-                   }
-               }
-           })
-           .catch(console.error);
+            .then(res => {
+                if (res.data) {
+                    // Atualiza Nome
+                    if (res.data.nome_loja) {
+                        setStoreName(res.data.nome_loja);
+                        localStorage.setItem('store_name', res.data.nome_loja);
+                    }
+                    // Atualiza Logo
+                    if (res.data.logo) {
+                        setStoreLogo(res.data.logo);
+                        localStorage.setItem('store_logo', res.data.logo);
+                    }
+                }
+            })
+            .catch(console.error);
     }
   };
 
@@ -74,7 +77,7 @@ function App() {
   return (
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden font-sans text-gray-800">
       
-      {/* [MUDANÇA 3] Passando o storeLogo para a Sidebar */}
+      {/* Sidebar com as props necessárias */}
       <Sidebar 
         activeScreen={activeScreen} 
         setActiveScreen={setActiveScreen} 
@@ -86,15 +89,19 @@ function App() {
       />
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-gray-100 w-full">
+        {/* Header Mobile e Título */}
         <header className="h-16 bg-white shadow-sm flex items-center px-4 md:px-6 z-10 flex-shrink-0 gap-4">
            <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
              <Menu size={24} />
            </button>
            <h2 className="text-xl font-bold text-gray-700 capitalize mt-1">
-             {activeScreen === 'nova-ficha' ? 'Nova Ficha' : activeScreen}
+             {activeScreen === 'nova-ficha' ? 'Nova Ficha' : 
+              activeScreen === 'super-admin' ? 'Painel Admin' : 
+              activeScreen}
            </h2>
         </header>
 
+        {/* Área Principal de Conteúdo */}
         <div className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
           <div className="h-full max-w-7xl mx-auto flex flex-col">
             {activeScreen === 'dashboard' && <Dashboard setActiveScreen={setActiveScreen} />}
@@ -103,6 +110,9 @@ function App() {
             {activeScreen === 'nova-ficha' && <NovaFicha />}
             {activeScreen === 'financeiro' && <Financeiro />} 
             {activeScreen === 'config' && <Configuracoes onUpdate={refreshStoreData} />}
+            
+            {/* Rota do Super Admin */}
+            {activeScreen === 'super-admin' && <SuperAdmin />}
           </div>
         </div>
       </main>

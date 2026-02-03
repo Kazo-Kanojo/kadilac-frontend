@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel, Wrench, DollarSign, TrendingUp, FileText, Paperclip, Download, Eye, Plus } from 'lucide-react';
+import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel, Wrench, DollarSign, TrendingUp, FileText, Paperclip, Plus } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
@@ -12,6 +12,7 @@ const Estoque = () => {
   const [vehicles, setVehicles] = useState([]); 
   const [filteredVehicles, setFilteredVehicles] = useState([]);
   const [clients, setClients] = useState([]); 
+  const [storeConfig, setStoreConfig] = useState(null); // Estado para Config da Loja
   
   // Estados de Interface
   const [selectedCar, setSelectedCar] = useState(null);
@@ -27,25 +28,28 @@ const Estoque = () => {
   // Estado para controlar o modal de despesas
   const [selectedVehicleForExpenses, setSelectedVehicleForExpenses] = useState(null);
   
-  // Estado para guardar o resumo financeiro e documentos
+  // Estado para guardar o resumo financeiro (para exibição na aba)
   const [financeiroData, setFinanceiroData] = useState({ despesas: [], totalDespesas: 0 });
-  const [vehicleDocsList, setVehicleDocsList] = useState([]); // [NOVO] Lista para a aba de documentos
+  const [vehicleDocsList, setVehicleDocsList] = useState([]);
 
   // --- CARREGAR DADOS DA API ---
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [vehiclesRes, clientsRes] = await Promise.all([
+      // Agora buscamos TUDO: Veículos, Clientes e Configuração da Loja
+      const [vehiclesRes, clientsRes, configRes] = await Promise.all([
         api.get('/veiculos'),
-        api.get('/clientes')
+        api.get('/clientes'),
+        api.get('/config') 
       ]);
 
       setVehicles(vehiclesRes.data);
       setFilteredVehicles(vehiclesRes.data);
       setClients(clientsRes.data);
+      setStoreConfig(configRes.data); // Salva a config para usar na impressão
       
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('Erro ao carregar dados:', error);
     } finally {
       setIsLoading(false);
     }
@@ -55,11 +59,10 @@ const Estoque = () => {
     fetchData();
   }, []);
 
-  // --- BUSCAR DADOS SOB DEMANDA (FINANCEIRO E DOCUMENTOS) ---
+  // --- BUSCAR DADOS SOB DEMANDA (Abas) ---
   useEffect(() => {
     if (!selectedCar) return;
 
-    // Busca Despesas
     if (activeTab === 'financeiro') {
         const fetchDespesas = async () => {
             try {
@@ -72,7 +75,6 @@ const Estoque = () => {
         fetchDespesas();
     }
 
-    // [NOVO] Busca Documentos quando a aba é ativada
     if (activeTab === 'documentos') {
         const fetchDocs = async () => {
             try {
@@ -84,7 +86,6 @@ const Estoque = () => {
     }
   }, [selectedCar, activeTab]);
 
-  // Função auxiliar para abrir documento
   const handleOpenDoc = (doc) => {
     const win = window.open();
     win.document.write(
@@ -108,6 +109,7 @@ const Estoque = () => {
 
   const handleCloseFicha = () => {
     if (!selectedCar) return alert("Selecione um veículo para fechar a ficha.");
+    if (selectedCar.status === 'Vendido') return alert("Este veículo já está vendido.");
     setIsCloseModalOpen(true);
   };
 
@@ -163,13 +165,24 @@ const Estoque = () => {
         };
 
         await api.post('/vendas', payload);
-        const updatedList = vehicles.map(v => v.id === selectedCar.id ? { ...v, status: 'Vendido' } : v);
+        
+        const clientComprador = clients.find(c => c.id === parseInt(saleData.cliente_id));
+        const updatedCar = { 
+            ...selectedCar, 
+            status: 'Vendido',
+            cliente_nome: clientComprador ? clientComprador.nome : 'Cliente',
+            valor: saleData.valor_venda,
+            vendedor: saleData.vendedor
+        };
+
+        const updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
         setVehicles(updatedList);
         setFilteredVehicles(updatedList);
-        setSelectedCar({ ...selectedCar, status: 'Vendido' });
+        setSelectedCar(updatedCar);
         setIsCloseModalOpen(false);
         alert("Venda registrada com sucesso!");
      } catch (error) {
+        console.error(error);
         alert("Erro ao fechar o negócio. Verifique os dados.");
      }
   };
@@ -198,7 +211,6 @@ const Estoque = () => {
             <span className="text-xs font-bold text-gray-600">Custos</span>
          </button>
 
-         {/* BOTÃO DA BARRA SUPERIOR (Atalho para o Modal) */}
          <button 
               onClick={() => {
                 if (!selectedCar) return alert("Selecione um veículo.");
@@ -289,7 +301,7 @@ const Estoque = () => {
         </div>
       </div>
 
-      {/* PAINEL INFERIOR DE DETALHES (A PARTE QUE SOBE) */}
+      {/* PAINEL INFERIOR DE DETALHES */}
       {selectedCar && (
         <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-[0_-5px_20px_rgba(0,0,0,0.1)] mt-2 z-20">
           
@@ -311,7 +323,6 @@ const Estoque = () => {
               <Camera size={14}/> Fotos
             </button>
             
-            {/* [NOVA ABA] DOCUMENTOS / ARQUIVOS */}
             <button 
               onClick={() => setActiveTab('documentos')}
               className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'documentos' ? 'bg-white text-indigo-600 border-t-2 border-t-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}
@@ -329,20 +340,25 @@ const Estoque = () => {
             
             {/* 1. DETALHES */}
             {activeTab === 'detalhes' && (
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm animate-fade-in">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm animate-fade-in h-full">
                   <div className="space-y-2">
                     <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Modelo:</span> <span className="font-bold uppercase">{selectedCar.modelo}</span></div>
                     <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Placa:</span> <span className="font-bold uppercase">{selectedCar.placa}</span></div>
                     <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500 flex items-center gap-1"><Fuel size={12}/> Combustível:</span> <span>{selectedCar.combustivel || '-'}</span></div>
                     <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Entrada:</span> <span className="font-bold">{selectedCar.data_entrada ? new Date(selectedCar.data_entrada).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '-'}</span></div>
                   </div>
+                  
                   <div className="space-y-2">
                     <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500 flex items-center gap-1"><User size={12}/> Proprietário Ant.:</span> <span className="uppercase text-gray-700 font-medium">{selectedCar.proprietario_anterior || '-'}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Vendedor (Origem):</span> <span className="text-gray-700">{selectedCar.vendedor || '-'}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Renavam:</span> <span>{selectedCar.renavam || '-'}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Chassi:</span> <span>{selectedCar.chassi || '-'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Vendedor:</span> <span className="text-gray-700">{selectedCar.vendedor || '-'}</span></div>
                     <div className="flex justify-between border-b border-gray-100 pb-1 bg-blue-50 px-1 rounded"><span className="text-blue-700 flex items-center gap-1 font-bold"><FileText size={12}/> Certificado:</span> <span className="font-bold text-gray-800">{selectedCar.certificado || '-'}</span></div>
+                    {selectedCar.status === 'Vendido' && (
+                        <div className="flex justify-between border-b border-green-200 bg-green-50 px-1 rounded pb-1">
+                            <span className="text-green-700 font-bold">Comprador:</span> <span className="text-green-900 font-bold uppercase">{selectedCar.cliente_nome || '-'}</span>
+                        </div>
+                    )}
                   </div>
+                  
                   <div className="bg-yellow-50 p-2 border border-yellow-100 rounded text-xs text-gray-600 italic">
                     <span className="font-semibold block mb-1">Observações:</span>
                     {selectedCar.observacoes || "Sem observações cadastradas."}
@@ -383,19 +399,18 @@ const Estoque = () => {
               </div>
             )}
 
-            {/* 4. DOCUMENTOS (NOVA ÁREA) */}
+            {/* 4. DOCUMENTOS (LISTA DE ARQUIVOS) */}
             {activeTab === 'documentos' && (
                 <div className="animate-fade-in h-full flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2">
                             <Paperclip size={16} className="text-indigo-500"/> Arquivos Anexados
                         </h3>
-                        {/* Botão para abrir o Modal de Gestão */}
                         <button 
                             onClick={() => setSelectedVehicleDocs(selectedCar)}
                             className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1 shadow-sm"
                         >
-                            <Plus size={14}/> Novo Arquivo
+                            <Plus size={14}/> Gerenciar Documentos
                         </button>
                     </div>
 
@@ -423,7 +438,7 @@ const Estoque = () => {
                                             className="flex-1 flex items-center justify-center gap-1 text-[10px] bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 py-1 rounded transition-colors"
                                             title="Visualizar"
                                         >
-                                            <Eye size={12}/> Ver
+                                            <FileText size={12}/> Ver
                                         </button>
                                         <a 
                                             href={doc.arquivo} 
@@ -431,7 +446,7 @@ const Estoque = () => {
                                             className="flex-1 flex items-center justify-center gap-1 text-[10px] bg-gray-50 hover:bg-green-50 text-gray-600 hover:text-green-600 py-1 rounded transition-colors"
                                             title="Baixar"
                                         >
-                                            <Download size={12}/> Baixar
+                                            <Camera size={12}/> Baixar
                                         </a>
                                     </div>
                                 </div>
@@ -462,12 +477,14 @@ const Estoque = () => {
         clientsList={clients}
       />
 
+      {/* Aqui passamos as Props para o DocumentosModal */}
       {selectedVehicleDocs && (
         <DocumentosModal 
             vehicle={selectedVehicleDocs} 
+            storeConfig={storeConfig} // <-- IMPORTANTE
+            clients={clients}         // <-- IMPORTANTE
             onClose={() => {
                 setSelectedVehicleDocs(null);
-                // Atualiza a lista da aba se estivermos na aba documentos
                 if (activeTab === 'documentos' && selectedCar) {
                     const fetchDocs = async () => {
                         const res = await api.get(`/veiculos/${selectedCar.id}/documentos`);
