@@ -9,7 +9,7 @@
 <body>
     <div class="recibo-a4 termo-responsabilidade">
         <header class="doc-header">
-            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
+            <h1 style="text-transform: uppercase;">{{LOJA_RAZAO}}</h1>
             <p class="separador">***</p>
             <h2>Termo de Responsabilidade</h2>
             <p class="separador">***</p>
@@ -26,30 +26,41 @@
                     <span class="value">{{CLIENTE_CPF}}</span>
                 </div>
                 <div class="field half">
-                    <label>R.G.:</label>
+                    <label>RG:</label>
                     <span class="value">{{CLIENTE_RG}}</span>
                 </div>
                 <div class="field full">
-                    <label>Endereço:</label>
+                    <label>com domicilio em:</label>
                     <span class="value">{{CLIENTE_ENDERECO}}</span>
                 </div>
             </div>
 
-            <p class="paragrafo-legal">
-                <strong>DECLARO</strong> para os devidos fins de direito e a quem possa interessar, que nesta data recebi o veículo:
+            <p class="paragrafo-principal">
+                Declaro para os devidos fins que assumo total responsabilidade Cível e Criminal, bem como multas e pontuações na CNH, referente ao veículo abaixo descrito, a partir da data e horário de saída da loja.
             </p>
 
             <section class="veiculo-box">
-                <div class="field full"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
-                <div class="field half"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
-                <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
-                <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
-                <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
-                <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
+                <div class="field-group">
+                    <div class="field full"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
+                    <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
+                    <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
+                    <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
+                </div>
+                
+                <div class="field-group" style="margin-top: 15px;">
+                    <div class="field half">
+                        <label>Data Saída:</label>
+                        <span class="value">{{DATA_ATUAL}}</span>
+                    </div>
+                    <div class="field half">
+                        <label>Hora Saída:</label>
+                        <span class="value">__:__</span>
+                    </div>
+                </div>
             </section>
 
-            <p class="paragrafo-legal">
-                Pelo presente termo, assumo total responsabilidade civil e criminal por quaisquer danos causados a terceiros ou infrações de trânsito cometidas com o referido veículo a partir desta data e horário de saída.
+            <p class="paragrafo-legal" style="margin-top: 20px;">
+                Comprometo-me a efetuar a transferência do veículo para meu nome no prazo máximo de 30 (trinta) dias, conforme art. 123 do CTB. O não cumprimento implicará em medidas judiciais cabíveis.
             </p>
 
             <p class="data-local">{{LOJA_CIDADE}}, {{DATA_ATUAL}}.</p>
@@ -58,13 +69,13 @@
                 <div class="assinaturas">
                     <div class="assinatura-block">
                         <div class="linha-assinatura"></div>
-                        <p style="text-transform: uppercase;">{{LOJA_RAZAO}}</p>
-                        <p>Vendedor</p>
+                        <p style="text-transform: uppercase;">{{CLIENTE_NOME}}</p>
+                        <p>Responsável (Cliente)</p>
                     </div>
                     <div class="assinatura-block">
                         <div class="linha-assinatura"></div>
-                        <p style="text-transform: uppercase;">{{CLIENTE_NOME}}</p>
-                        <p>Responsável / Comprador</p>
+                        <p style="text-transform: uppercase;">{{LOJA_RAZAO}}</p>
+                        <p>Testemunha (Loja)</p>
                     </div>
                 </div>
             </footer>
@@ -77,20 +88,17 @@
             if (!data) return;
 
             const replacements = {
+                '{{LOJA_RAZAO}}': data.store?.razao_social || '',
+                '{{LOJA_CIDADE}}': data.store?.cidade || '',
                 '{{CLIENTE_NOME}}': data.client?.nome || '',
                 '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '',
                 '{{CLIENTE_RG}}': data.client?.rg || '',
                 '{{CLIENTE_ENDERECO}}': data.client?.endereco || '',
-                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
                 '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
+                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
                 '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
                 '{{VEICULO_COR}}': data.vehicle?.cor || '',
-                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
                 '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
-                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
-                '{{LOJA_NOME}}': data.store?.nome_loja || 'LOJA',
-                '{{LOJA_RAZAO}}': data.store?.razao_social || 'RAZÃO SOCIAL',
-                '{{LOJA_CIDADE}}': data.store?.cidade || 'Cidade',
                 '{{DATA_ATUAL}}': data.date
             };
 

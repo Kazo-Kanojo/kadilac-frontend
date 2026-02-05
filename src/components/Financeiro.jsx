@@ -46,14 +46,19 @@ const Financeiro = () => {
       }));
 
       // Normaliza dados DESPESAS
-      const saidas = despesas.map(d => ({
+      const saidas = despesas.map(d => {
+    const isReceita = d.tipo === 'receita';
+
+    return {
         id: `d-${d.id}`,
-        tipo: 'saida',
-        descricao: `Despesa: ${d.descricao}`,
+        // Se for receita, marcamos como 'entrada', senão 'saida'
+        tipo: isReceita ? 'entrada' : 'saida', 
+        descricao: `${isReceita ? 'Receita Extra' : 'Despesa'}: ${d.descricao}`,
         valor: parseFloat(d.valor),
-        data: d.data_despesa, // ou d.data, dependendo do banco
-        origem: 'Despesa'
-      }));
+        data: d.data_despesa,
+        origem: isReceita ? 'Outras Receitas' : 'Despesa Veicular'
+    };
+});
 
       const all = [...entradas, ...saidas].sort((a, b) => new Date(b.data) - new Date(a.data));
       setTransactions(all);

@@ -74,7 +74,6 @@ const Sidebar = ({ activeScreen, setActiveScreen, isOpen, onClose, onLogout, sto
         {/* MENU DE NAVEGAÇÃO */}
         <nav className="flex-1 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           <MenuItem id="dashboard" icon={LayoutDashboard} label="Visão Geral" />
-          <MenuItem id="nova-ficha" icon={FilePlus} label="Nova Ficha" />
           <MenuItem id="estoque" icon={Car} label="Veículos" />
           <MenuItem id="clientes" icon={Users} label="Clientes" />
           <MenuItem id="financeiro" icon={Wallet} label="Financeiro" />

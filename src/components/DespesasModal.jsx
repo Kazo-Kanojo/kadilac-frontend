@@ -1,79 +1,90 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Wrench } from 'lucide-react';
-import api from '../api'; // Importamos o 'api' em vez de apenas a URL
+import { X, Plus, Trash2, Wrench, ArrowUpCircle, ArrowDownCircle, Save, Edit2 } from 'lucide-react';
+import api from '../api';
 
 const DespesasModal = ({ vehicle, onClose }) => {
   const [despesas, setDespesas] = useState([]);
   const [desc, setDesc] = useState('');
   const [valor, setValor] = useState('');
+  const [tipo, setTipo] = useState('despesa');
   const [loading, setLoading] = useState(false);
-
-  // Valor de Compra (Custo original cadastrado no veículo)
-  const valorCompra = parseFloat(vehicle.custo || 0);
+  
+  // Estado para controlar se estamos editando um item existente
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     loadDespesas();
-  }, []);
+    
+    // Se o objeto vehicle trouxer um editExpense (clique no editar da aba), carrega no form
+    if (vehicle.editExpense) {
+        handlePrepareEdit(vehicle.editExpense);
+    }
+  }, [vehicle]);
 
   const loadDespesas = async () => {
     try {
-      // CORREÇÃO: Usando 'api.get' o token é enviado automaticamente
       const res = await api.get(`/veiculos/${vehicle.id}/despesas`);
-      
-      // O axios já traz os dados em .data e garante que seja o formato esperado
-      // Se vier vazio ou null, garantimos um array vazio [] para não travar o .reduce
       setDespesas(Array.isArray(res.data) ? res.data : []);
-      
     } catch (error) {
-      console.error("Erro ao carregar despesas:", error);
-      setDespesas([]); // Evita tela branca em caso de erro
+      console.error("Erro ao carregar lançamentos:", error);
     }
   };
 
-  const handleAdd = async (e) => {
+  const handlePrepareEdit = (item) => {
+      setEditingId(item.id);
+      setDesc(item.descricao);
+      setValor(item.valor);
+      setTipo(item.tipo || 'despesa');
+  };
+
+  const handleCancelEdit = () => {
+      setEditingId(null);
+      setDesc('');
+      setValor('');
+      setTipo('despesa');
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!desc || !valor) return;
 
     setLoading(true);
     try {
-      // CORREÇÃO: Usando api.post
-      await api.post(`/veiculos/${vehicle.id}/despesas`, { 
+      const payload = { 
         descricao: desc, 
-        valor: parseFloat(valor) 
-      });
+        valor: parseFloat(valor),
+        tipo: tipo 
+      };
+
+      if (editingId) {
+        // Rota de UPDATE
+        await api.put(`/despesas/${editingId}`, payload);
+        setEditingId(null);
+      } else {
+        // Rota de CREATE
+        await api.post(`/veiculos/${vehicle.id}/despesas`, payload);
+      }
       
-      // Se não deu erro no await acima, limpamos e recarregamos
       setDesc('');
       setValor('');
       loadDespesas(); 
 
     } catch (error) {
-      alert("Erro ao adicionar despesa");
+      alert("Erro ao processar lançamento");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    // eslint-disable-next-line no-restricted-globals
-    if(!confirm("Remover esta despesa?")) return;
-    
+    if(!window.confirm("Remover este lançamento?")) return;
     try {
-      // CORREÇÃO: Usando api.delete
       await api.delete(`/despesas/${id}`);
       loadDespesas();
     } catch (error) {
-      console.error("Erro ao deletar:", error);
-      alert("Erro ao remover despesa.");
+      alert("Erro ao remover.");
     }
   };
-
-  // Cálculos Seguros (usando || 0 para evitar NaN)
-  const totalDespesas = despesas.reduce((acc, curr) => acc + (parseFloat(curr.valor) || 0), 0);
-  const custoTotal = valorCompra + totalDespesas;
-
-  // Formatador de Moeda
-  const fMoney = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -83,95 +94,110 @@ const DespesasModal = ({ vehicle, onClose }) => {
         <div className="bg-gray-800 text-white p-4 flex justify-between items-center">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Wrench size={20} className="text-orange-500" />
-            Gestão de Custos: {vehicle.modelo}
+            Lançamentos: {vehicle.modelo}
           </h2>
           <button onClick={onClose} className="hover:bg-gray-700 p-2 rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        {/* Resumo Financeiro */}
-        <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 border-b">
-            <div className="bg-white p-3 rounded border shadow-sm">
-                <p className="text-xs text-gray-500 font-bold uppercase">Valor de Compra</p>
-                <p className="text-lg font-bold text-blue-600">{fMoney(valorCompra)}</p>
-            </div>
-            <div className="bg-white p-3 rounded border shadow-sm">
-                <p className="text-xs text-gray-500 font-bold uppercase">Total Despesas</p>
-                <p className="text-lg font-bold text-red-500">+ {fMoney(totalDespesas)}</p>
-            </div>
-            <div className="bg-blue-50 p-3 rounded border border-blue-200 shadow-sm">
-                <p className="text-xs text-blue-700 font-bold uppercase">Custo Final Total</p>
-                <p className="text-xl font-black text-gray-800">{fMoney(custoTotal)}</p>
-            </div>
-        </div>
-
-        {/* Lista de Despesas */}
-        <div className="flex-1 overflow-auto p-4 custom-scrollbar">
-            {despesas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full py-10 text-gray-400">
-                    <Wrench size={48} className="mb-2 opacity-20" />
-                    <p>Nenhuma despesa cadastrada.</p>
-                </div>
-            ) : (
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-100 text-gray-600 font-bold sticky top-0">
-                        <tr>
-                            <th className="p-3 rounded-tl-lg">Descrição</th>
-                            <th className="p-3">Data</th>
-                            <th className="p-3">Valor</th>
-                            <th className="p-3 w-10 rounded-tr-lg"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {despesas.map(d => (
-                            <tr key={d.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="p-3 font-medium text-gray-800">{d.descricao}</td>
-                                <td className="p-3 text-gray-500">
-                                    {d.data_despesa ? new Date(d.data_despesa).toLocaleDateString() : '-'}
+        {/* Lista de Lançamentos */}
+        <div className="flex-1 overflow-auto p-4 custom-scrollbar bg-gray-50">
+            <table className="w-full text-sm text-left bg-white rounded-lg shadow-sm">
+                <thead className="bg-gray-100 text-gray-600 font-bold">
+                    <tr>
+                        <th className="p-3">Descrição</th>
+                        <th className="p-3 text-center">Tipo</th>
+                        <th className="p-3">Valor</th>
+                        <th className="p-3 w-20 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y">
+                    {despesas.length === 0 ? (
+                        <tr><td colSpan="4" className="p-6 text-center text-gray-400">Nenhum registro encontrado.</td></tr>
+                    ) : (
+                        despesas.map(d => (
+                            <tr key={d.id} className={`hover:bg-gray-50 ${editingId === d.id ? 'bg-blue-50' : ''}`}>
+                                <td className="p-3 font-medium uppercase text-gray-700">{d.descricao}</td>
+                                <td className="p-3 text-center">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${d.tipo === 'receita' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                        {d.tipo || 'despesa'}
+                                    </span>
                                 </td>
-                                <td className="p-3 font-bold text-red-600">- {fMoney(parseFloat(d.valor))}</td>
-                                <td className="p-3">
-                                    <button onClick={() => handleDelete(d.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                        <Trash2 size={16} />
-                                    </button>
+                                <td className={`p-3 font-bold ${d.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {d.tipo === 'receita' ? '+ ' : '- '}R$ {Number(d.valor).toLocaleString()}
+                                </td>
+                                <td className="p-3 text-right">
+                                    <div className="flex justify-end gap-1">
+                                        <button onClick={() => handlePrepareEdit(d)} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"><Edit2 size={14}/></button>
+                                        <button onClick={() => handleDelete(d.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                                    </div>
                                 </td>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
+                        ))
+                    )}
+                </tbody>
+            </table>
         </div>
 
-        {/* Formulário de Adição */}
-        <form onSubmit={handleAdd} className="p-4 bg-gray-100 border-t flex gap-3 items-end">
-            <div className="flex-1">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Nova Despesa (Ex: Funilaria)</label>
+        {/* Formulário (Funciona para Criar e Editar) */}
+        <form onSubmit={handleSubmit} className={`p-4 border-t flex flex-col gap-3 ${editingId ? 'bg-blue-50 border-blue-200' : 'bg-white'}`}>
+            <div className="flex items-center justify-between mb-1">
+                <h3 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1">
+                    {editingId ? <Edit2 size={12}/> : <Plus size={12}/>}
+                    {editingId ? 'Editando Lançamento' : 'Novo Lançamento'}
+                </h3>
+                {editingId && (
+                    <button onClick={handleCancelEdit} type="button" className="text-[10px] text-blue-600 font-bold hover:underline">
+                        Cancelar Edição
+                    </button>
+                )}
+            </div>
+
+            <div className="flex gap-3">
+                <div className="flex bg-gray-200 p-1 rounded-lg shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setTipo('despesa')}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${tipo === 'despesa' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                        <ArrowDownCircle size={14} /> Despesa
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setTipo('receita')}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${tipo === 'receita' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500'}`}
+                    >
+                        <ArrowUpCircle size={14} /> Receita
+                    </button>
+                </div>
+
                 <input 
                     type="text" 
-                    className="w-full p-2 border rounded focus:border-orange-500 outline-none transition-colors"
+                    className="flex-1 p-2 border rounded-lg focus:border-blue-500 outline-none text-sm uppercase"
                     value={desc}
                     onChange={e => setDesc(e.target.value)}
-                    placeholder="Descrição do serviço..."
+                    placeholder="Descrição do gasto ou entrada..."
+                    required
                 />
-            </div>
-            <div className="w-32">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Valor (R$)</label>
+                
                 <input 
                     type="number" step="0.01"
-                    className="w-full p-2 border rounded focus:border-orange-500 outline-none transition-colors"
+                    className="w-28 p-2 border rounded-lg focus:border-blue-500 outline-none text-sm font-bold"
                     value={valor}
                     onChange={e => setValor(e.target.value)}
                     placeholder="0,00"
+                    required
                 />
+
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className={`px-4 rounded-lg font-bold text-white flex items-center gap-2 shadow-sm transition-all ${editingId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-800 hover:bg-gray-900'}`}
+                >
+                    {loading ? '...' : editingId ? <><Save size={16}/> Salvar</> : <><Plus size={16}/> Lançar</>}
+                </button>
             </div>
-            <button 
-                type="submit" 
-                disabled={loading}
-                className="bg-orange-500 text-white px-4 py-2 rounded font-bold hover:bg-orange-600 flex items-center gap-2 h-[42px] transition-colors shadow-sm disabled:opacity-50"
-            >
-                <Plus size={18} /> {loading ? '...' : 'Adicionar'}
-            </button>
         </form>
 
       </div>

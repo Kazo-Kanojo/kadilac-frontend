@@ -9,58 +9,104 @@
 <body>
     <div class="recibo-a4 ficha-veiculo">
         <header class="doc-header">
-            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
+            <h1 style="text-transform: uppercase;">{{LOJA_RAZAO}}</h1>
             <p class="separador">***</p>
             <h2>FICHA DE VEÍCULO</h2>
             <p class="separador">***</p>
         </header>
 
         <div class="datas-entrada-saida">
-            <p><strong>Emissão:</strong> {{DATA_ATUAL}}</p>
+            <p><strong>Dt. Entrada:</strong> {{DATA_ENTRADA}}</p>
+            <p><strong>Dt. Saída:</strong> {{DATA_SAIDA}}</p>
         </div>
 
         <main>
             <section class="info-principal-veiculo">
                 <div class="field-group" style="flex-basis: 100%;">
-                    <div class="field" style="flex-basis: 60%;"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
-                    <div class="field" style="flex-basis: 35%;"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
-                </div>
-                
-                <div class="field-group" style="flex-basis: 100%;">
-                    <div class="field"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
-                    <div class="field"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
-                    <div class="field"><label>Combustível:</label><span>Flex</span></div>
-                </div>
-
-                <div class="field-group">
-                    <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
-                    <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
-                    <div class="field full"><label>Certificado:</label><span>{{VEICULO_CERTIFICADO}}</span></div>
+                    <div class="field" style="flex-basis: 55%;"><label>Veículo:</label><span>{{VEICULO_MODELO}}</span></div>
+                    <div class="field" style="flex-basis: 40%;"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
+                    
+                    <div class="field" style="flex-basis: 30%;"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
+                    <div class="field" style="flex-basis: 30%;"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
+                    <div class="field" style="flex-basis: 35%;"><label>Combustível:</label><span>{{VEICULO_COMBUSTIVEL}}</span></div>
+                    
+                    <div class="field" style="flex-basis: 45%;"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
+                    <div class="field" style="flex-basis: 50%;"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
                 </div>
             </section>
 
-            <hr>
+            <div class="partes-container">
+                
+                <div class="parte-bloco">
+                    <h3>ORIGEM / PROPRIETÁRIO ANT.</h3>
+                    <div class="field full"><label>Nome:</label><span>{{ANTIGO_NOME}}</span></div>
+                    <div class="field full"><label>Tel:</label><span>-</span></div>
+                    <div class="field full"><label>Cidade:</label><span>-</span></div>
+                </div>
 
-            <section class="info-cliente-interessado">
-                <h3>Dados do Cliente / Interessado</h3>
-                <div class="field-group">
+                <div class="parte-bloco">
+                    <h3>DESTINO / COMPRADOR</h3>
                     <div class="field full"><label>Nome:</label><span>{{CLIENTE_NOME}}</span></div>
                     <div class="field full"><label>CPF:</label><span>{{CLIENTE_CPF}}</span></div>
-                    <div class="field full"><label>Telefone:</label><span>{{CLIENTE_TELEFONE}}</span></div>
+                    <div class="field full"><label>Tel:</label><span>{{CLIENTE_TEL}}</span></div>
+                    <div class="field full"><label>Endereço:</label><span>{{CLIENTE_ENDERECO}}</span></div>
                 </div>
-            </section>
+
+                <div class="parte-bloco">
+                    <h3>VEÍCULO NA TROCA</h3>
+                    <div class="field full"><label>Veículo:</label><span>-</span></div>
+                    <div class="field full"><label>Placa:</label><span>-</span></div>
+                    <div class="field full"><label>Valor:</label><span>-</span></div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 5px;">RELATÓRIO DE CUSTOS & DESPESAS</h3>
+            <table class="despesas-tabela">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Data</th>
+                        <th style="width: 65%;">Descrição do Serviço / Peça</th>
+                        <th style="width: 20%;">Valor</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-despesas">
+                    </tbody>
+            </table>
             
             <section class="resumo-financeiro">
-                <h3>Proposta / Valores</h3>
+                <h3>Resumo Financeiro da Operação</h3>
+                
                 <div class="resumo-linha">
-                    <span>Valor de Venda:</span>
-                    <strong>{{VEICULO_PRECO}}</strong>
+                    <span>Valor de Compra (Custo Veículo):</span>
+                    <strong style="color: #d32f2f;">{{VALOR_COMPRA}}</strong>
                 </div>
+                 <div class="resumo-linha">
+                    <span>Total de Despesas (Manutenção):</span>
+                    <strong style="color: #d32f2f;">{{TOTAL_DESPESAS}}</strong>
+                </div>
+                <hr style="border: 1px dashed #000; width: 100%;">
+                 <div class="resumo-linha">
+                    <span>CUSTO TOTAL (Veículo + Despesas):</span>
+                    <strong>{{CUSTO_TOTAL_FINAL}}</strong>
+                </div>
+                
+                <br>
+                
                 <div class="resumo-linha">
-                    <span>Vendedor:</span>
-                    <strong>{{VENDEDOR_NOME}}</strong>
+                    <span>Valor de Venda (Negociado):</span>
+                    <strong style="color: #1976d2;">{{VALOR_VENDA}}</strong>
+                </div>
+                
+                <hr style="border: 2px solid #000; width: 100%;">
+                
+                <div class="resumo-linha" style="margin-top: 10px; font-size: 14pt;">
+                    <span>LUCRO LÍQUIDO:</span>
+                    <strong id="label-lucro">{{LUCRO_FINAL}}</strong>
                 </div>
             </section>
+
+            <p class="data-local" style="margin-top: 30px; text-align: center;">{{LOJA_CIDADE}}, {{DATA_ATUAL}}.</p>
+
         </main>
     </div>
 
@@ -68,32 +114,87 @@
         window.addEventListener('DOMContentLoaded', () => {
             const data = JSON.parse(localStorage.getItem('sistema_print_data'));
             if (!data) return;
-            const formatMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
 
+            const fMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+            const fDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+
+            // --- CÁLCULOS FINANCEIROS ---
+            const precoCompra = parseFloat(data.vehicle.preco_compra || data.vehicle.custo || 0);
+            const precoVenda = parseFloat(data.vehicle.preco_venda || data.vehicle.valor || 0);
+            
+            // Pega despesas (se tiverem sido passadas, senão vazio)
+            const despesas = data.expenses || [];
+            const totalDespesas = despesas.reduce((acc, d) => acc + (parseFloat(d.valor) || 0), 0);
+            
+            const custoTotal = precoCompra + totalDespesas;
+            const lucro = precoVenda - custoTotal;
+
+            // --- PREENCHIMENTO DA TABELA DE DESPESAS ---
+            const tbody = document.getElementById('lista-despesas');
+            if(despesas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Nenhuma despesa lançada.</td></tr>';
+            } else {
+                let htmlRows = '';
+                despesas.forEach(d => {
+                    htmlRows += `
+                        <tr>
+                            <td>${fDate(d.data_despesa)}</td>
+                            <td>${d.descricao}</td>
+                            <td>${fMoney(d.valor)}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = htmlRows;
+            }
+
+            // --- MAPA DE SUBSTITUIÇÃO ---
             const replacements = {
-                '{{CLIENTE_NOME}}': data.client?.nome || '',
-                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '',
-                '{{CLIENTE_TELEFONE}}': data.client?.telefone || '',
-                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
-                '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
-                '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
-                '{{VEICULO_COR}}': data.vehicle?.cor || '',
-                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
-                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
-                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
-                '{{VEICULO_CERTIFICADO}}': data.vehicle?.certificado || '',
-                '{{VEICULO_PRECO}}': formatMoney(data.sale?.price),
-                '{{VENDEDOR_NOME}}': data.sale?.seller || '',
-                '{{LOJA_NOME}}': data.store?.nome_loja || 'LOJA',
-                '{{DATA_ATUAL}}': data.date
+                '{{LOJA_RAZAO}}': data.store?.razao_social || 'CONCESSIONÁRIA',
+                '{{LOJA_CIDADE}}': data.store?.cidade || 'São Paulo',
+                
+                '{{DATA_ENTRADA}}': fDate(data.vehicle.data_entrada),
+                '{{DATA_SAIDA}}': data.vehicle.status === 'Vendido' ? fDate(data.vehicle.data_venda) : 'Em Estoque',
+                '{{DATA_ATUAL}}': new Date().toLocaleDateString('pt-BR'),
+
+                '{{VEICULO_MODELO}}': data.vehicle.modelo,
+                '{{VEICULO_PLACA}}': data.vehicle.placa,
+                '{{VEICULO_ANO}}': data.vehicle.ano,
+                '{{VEICULO_COR}}': data.vehicle.cor,
+                '{{VEICULO_COMBUSTIVEL}}': data.vehicle.combustivel,
+                '{{VEICULO_RENAVAM}}': data.vehicle.renavam || '-',
+                '{{VEICULO_CHASSI}}': data.vehicle.chassi || '-',
+
+                '{{ANTIGO_NOME}}': data.vehicle.proprietario_anterior || 'Não informado',
+                
+                '{{CLIENTE_NOME}}': data.client?.nome || '-',
+                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '-',
+                '{{CLIENTE_TEL}}': data.client?.telefone || '-',
+                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '-',
+
+                // Financeiro
+                '{{VALOR_COMPRA}}': fMoney(precoCompra),
+                '{{TOTAL_DESPESAS}}': fMoney(totalDespesas),
+                '{{CUSTO_TOTAL_FINAL}}': fMoney(custoTotal),
+                '{{VALOR_VENDA}}': fMoney(precoVenda),
+                '{{LUCRO_FINAL}}': fMoney(lucro)
             };
 
+            // Aplica as substituições no HTML
             let html = document.body.innerHTML;
             for (const [key, val] of Object.entries(replacements)) {
+                // Regex global para substituir todas as ocorrências
                 html = html.replace(new RegExp(key, 'g'), val);
             }
             document.body.innerHTML = html;
-            setTimeout(() => window.print(), 500);
+
+            // Muda cor do lucro (Vermelho se prejuízo, Verde/Azul se lucro)
+            const elLucro = document.getElementById('label-lucro');
+            if(elLucro) {
+                elLucro.style.color = lucro >= 0 ? 'green' : 'red';
+            }
+
+            // Imprime automaticamente
+            setTimeout(() => window.print(), 800);
         });
     </script>
 </body>

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, User, Fuel, Wrench, DollarSign, TrendingUp, FileText, Paperclip, Plus } from 'lucide-react';
+import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, Fuel, Wrench, DollarSign, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
@@ -12,7 +12,7 @@ const Estoque = () => {
   const [vehicles, setVehicles] = useState([]); 
   const [filteredVehicles, setFilteredVehicles] = useState([]);
   const [clients, setClients] = useState([]); 
-  const [storeConfig, setStoreConfig] = useState(null); // Estado para Config da Loja
+  const [storeConfig, setStoreConfig] = useState(null); 
   
   // Estados de Interface
   const [selectedCar, setSelectedCar] = useState(null);
@@ -23,20 +23,16 @@ const Estoque = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [selectedVehicleDocs, setSelectedVehicleDocs] = useState(null);
-  const [modalMode, setModalMode] = useState('create');
-  
-  // Estado para controlar o modal de despesas
   const [selectedVehicleForExpenses, setSelectedVehicleForExpenses] = useState(null);
   
-  // Estado para guardar o resumo financeiro (para exibição na aba)
-  const [financeiroData, setFinanceiroData] = useState({ despesas: [], totalDespesas: 0 });
+  // Estado financeiro (Separado: Total Despesas e Total Receitas Extras)
+  const [financeiroData, setFinanceiroData] = useState({ despesas: [], totalDespesas: 0, totalReceitas: 0 });
   const [vehicleDocsList, setVehicleDocsList] = useState([]);
 
-  // --- CARREGAR DADOS DA API ---
+  // --- CARREGAR DADOS ---
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      // Agora buscamos TUDO: Veículos, Clientes e Configuração da Loja
       const [vehiclesRes, clientsRes, configRes] = await Promise.all([
         api.get('/veiculos'),
         api.get('/clientes'),
@@ -46,7 +42,7 @@ const Estoque = () => {
       setVehicles(vehiclesRes.data);
       setFilteredVehicles(vehiclesRes.data);
       setClients(clientsRes.data);
-      setStoreConfig(configRes.data); // Salva a config para usar na impressão
+      setStoreConfig(configRes.data);
       
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -59,17 +55,21 @@ const Estoque = () => {
     fetchData();
   }, []);
 
-  // --- BUSCAR DADOS SOB DEMANDA (Abas) ---
+  // --- EFEITO PARA CARREGAR DADOS DAS ABAS ---
   useEffect(() => {
     if (!selectedCar) return;
 
-    if (activeTab === 'financeiro') {
+    // Carrega dados tanto na aba de Despesas quanto na Financeiro
+    if (activeTab === 'despesas' || activeTab === 'financeiro') {
         const fetchDespesas = async () => {
             try {
                 const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
                 const data = res.data;
-                const total = data.reduce((acc, item) => acc + Number(item.valor), 0);
-                setFinanceiroData({ despesas: data, totalDespesas: total });
+                // Separa o que é despesa do que é receita
+                const despesasTotal = data.filter(d => d.tipo !== 'receita').reduce((acc, item) => acc + Number(item.valor), 0);
+                const receitasTotal = data.filter(d => d.tipo === 'receita').reduce((acc, item) => acc + Number(item.valor), 0);
+                
+                setFinanceiroData({ despesas: data, totalDespesas: despesasTotal, totalReceitas: receitasTotal });
             } catch (error) { console.error(error); }
         };
         fetchDespesas();
@@ -94,24 +94,9 @@ const Estoque = () => {
   };
 
   // --- AÇÕES ---
-
-  const handleNewCar = () => {
-    setSelectedCar(null);
-    setModalMode('create');
-    setIsModalOpen(true);
-  };
-
-  const handleEditCar = () => {
-    if (!selectedCar) return alert("Selecione um veículo para alterar.");
-    setModalMode('edit');
-    setIsModalOpen(true);
-  };
-
-  const handleCloseFicha = () => {
-    if (!selectedCar) return alert("Selecione um veículo para fechar a ficha.");
-    if (selectedCar.status === 'Vendido') return alert("Este veículo já está vendido.");
-    setIsCloseModalOpen(true);
-  };
+  const handleNewCar = () => { setSelectedCar(null); setIsModalOpen(true); };
+  const handleEditCar = () => { if (!selectedCar) return alert("Selecione um veículo."); setIsModalOpen(true); };
+  const handleCloseFicha = () => { if (!selectedCar) return alert("Selecione um veículo."); if (selectedCar.status === 'Vendido') return alert("Já vendido."); setIsCloseModalOpen(true); };
 
   const handleDeleteCar = async () => {
     if (!selectedCar) return;
@@ -129,61 +114,15 @@ const Estoque = () => {
     }
   };
 
-  const handleSaveVehicle = async (data) => {
-    try {
-        let updatedList;
-        if (modalMode === 'create') {
-            const response = await api.post('/veiculos', data);
-            updatedList = [response.data, ...vehicles];
-        } else {
-            if (!selectedCar || !selectedCar.id) return;
-            await api.put(`/veiculos/${selectedCar.id}`, data);
-            const updatedCar = { ...selectedCar, ...data }; 
-            updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
-            setSelectedCar(updatedCar);
-        }
-        setVehicles(updatedList);
-        setFilteredVehicles(updatedList);
-        setIsModalOpen(false);
-    } catch (error) {
-        console.error("Erro ao salvar:", error);
-        alert("Erro ao salvar dados.");
-    }
-  };
-
   const confirmCloseFicha = async (saleData) => {
      try {
-        const payload = {
-            veiculo_id: selectedCar.id,
-            cliente_id: saleData.cliente_id,
-            valor_venda: parseFloat(saleData.valor_venda),
-            data_venda: saleData.data_venda,
-            vendedor: saleData.vendedor,
-            metodo_pagamento: saleData.metodo_pagamento,
-            entrada: 0, financiado: 0,
-            observacoes: `Venda Fechada via Estoque. Obs: ${saleData.observacoes || ''}`
-        };
-
+        const payload = { ...saleData, veiculo_id: selectedCar.id };
         await api.post('/vendas', payload);
-        
-        const clientComprador = clients.find(c => c.id === parseInt(saleData.cliente_id));
-        const updatedCar = { 
-            ...selectedCar, 
-            status: 'Vendido',
-            cliente_nome: clientComprador ? clientComprador.nome : 'Cliente',
-            valor: saleData.valor_venda,
-            vendedor: saleData.vendedor
-        };
-
-        const updatedList = vehicles.map(v => v.id === selectedCar.id ? updatedCar : v);
-        setVehicles(updatedList);
-        setFilteredVehicles(updatedList);
-        setSelectedCar(updatedCar);
+        fetchData(); 
         setIsCloseModalOpen(false);
-        alert("Venda registrada com sucesso!");
+        alert(`${saleData.operacao} registrada com sucesso!`);
      } catch (error) {
-        console.error(error);
-        alert("Erro ao fechar o negócio. Verifique os dados.");
+        alert("Erro ao processar operação.");
      }
   };
 
@@ -191,7 +130,7 @@ const Estoque = () => {
     <div className="flex flex-col h-full animate-fade-in relative bg-gray-50">
       
       {/* BARRA DE FERRAMENTAS */}
-      <div className="bg-white p-2 rounded-t-lg shadow-sm border-b border-gray-200 flex flex-wrap gap-2 items-center mb-2">
+      <div className="bg-white p-2 rounded-t-lg shadow-sm border-b border-gray-200 flex flex-wrap gap-2 items-center mb-2 shrink-0">
          <button onClick={handleNewCar} className="flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all group min-w-[80px]">
             <FilePlus size={24} className="text-blue-600 mb-1 group-hover:scale-110 transition-transform"/>
             <span className="text-xs font-bold text-gray-600">Nova</span>
@@ -199,26 +138,12 @@ const Estoque = () => {
          
          <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
          
-         <button 
-            onClick={() => {
-                if (!selectedCar) return alert("Selecione um veículo.");
-                setSelectedVehicleForExpenses(selectedCar);
-            }}
-            disabled={!selectedCar}
-            className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-50 hover:border-yellow-200'}`}
-         >
+         <button onClick={() => { if (!selectedCar) return alert("Selecione um veículo."); setSelectedVehicleForExpenses(selectedCar); }} disabled={!selectedCar} className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-50 hover:border-yellow-200'}`}>
             <Wrench size={24} className="text-yellow-600 mb-1 group-hover:scale-110 transition-transform"/>
             <span className="text-xs font-bold text-gray-600">Custos</span>
          </button>
 
-         <button 
-              onClick={() => {
-                if (!selectedCar) return alert("Selecione um veículo.");
-                setSelectedVehicleDocs(selectedCar);
-              }}
-              disabled={!selectedCar}
-              className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-50 hover:border-indigo-200'}`}
-              title="Gerenciar Documentos">
+         <button onClick={() => { if (!selectedCar) return alert("Selecione um veículo."); setSelectedVehicleDocs(selectedCar); }} disabled={!selectedCar} className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-50 hover:border-indigo-200'}`} title="Gerenciar Documentos">
               <Paperclip size={24} className='mb-1 text-indigo-600 group-hover:scale-110 transition-transform'/>
               <span className='text-xs font-bold text-gray-600'>Docs</span>
           </button>
@@ -275,23 +200,15 @@ const Estoque = () => {
                    <tr><td colSpan="7" className="p-4 text-center text-gray-400">Nenhum veículo cadastrado.</td></tr>
                 ) : (
                   filteredVehicles.map((car) => (
-                    <tr 
-                      key={car.id} 
-                      onClick={() => { setSelectedCar(car); setActiveTab('detalhes'); }}
-                      className={`cursor-pointer transition-colors ${selectedCar?.id === car.id ? 'bg-blue-100 text-blue-900 font-medium' : 'hover:bg-blue-50 text-gray-700'}`}
-                    >
-                      <td className="p-3">
-                        {car.data_entrada 
-                           ? new Date(car.data_entrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
-                           : car.dataEntrada ? new Date(car.dataEntrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
-                      </td>
+                    <tr key={car.id} onClick={() => { setSelectedCar(car); setActiveTab('detalhes'); }} className={`cursor-pointer transition-colors ${selectedCar?.id === car.id ? 'bg-blue-100 text-blue-900 font-medium' : 'hover:bg-blue-50 text-gray-700'}`}>
+                      <td className="p-3">{car.data_entrada ? new Date(car.data_entrada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}</td>
                       <td className="p-3 uppercase">{car.modelo}</td>
                       <td className="p-3">{car.cor}</td>
                       <td className="p-3">{car.ano}</td>
                       <td className="p-3 uppercase font-mono">{car.placa}</td>
                       <td className="p-3">R$ {Number(car.valor).toLocaleString()}</td>
                       <td className="p-3 text-center">
-                        <div className={`w-3 h-3 rounded-full mx-auto ${car.status === 'Em estoque' ? 'bg-green-500' : car.status === 'Vendido' ? 'bg-red-500' : 'bg-yellow-500'}`} title={car.status}></div>
+                        <div className={`w-3 h-3 rounded-full mx-auto ${car.status === 'Em estoque' || car.status === 'Disponível' ? 'bg-green-500' : car.status === 'Vendido' ? 'bg-red-500' : 'bg-yellow-500'}`} title={car.status}></div>
                       </td>
                     </tr>
                   ))
@@ -303,33 +220,21 @@ const Estoque = () => {
 
       {/* PAINEL INFERIOR DE DETALHES */}
       {selectedCar && (
-        <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-[0_-5px_20px_rgba(0,0,0,0.1)] mt-2 z-20">
+        <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-[0_-5px_20px_rgba(0,0,0,0.1)] mt-2 z-20 shrink-0">
           
           {/* ABAS DO PAINEL */}
           <div className="flex border-b bg-gray-50 overflow-x-auto">
-            {['Detalhes', 'Financeiro'].map((tab) => (
-              <button 
-                key={tab}
-                onClick={() => setActiveTab(tab.toLowerCase())}
-                className={`px-6 py-3 text-sm font-bold border-r border-gray-200 whitespace-nowrap transition-colors ${activeTab === tab.toLowerCase() ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                {tab === 'Financeiro' ? 'Financeiro / Despesas' : tab}
+            {['Detalhes', 'Despesas', 'Financeiro'].map((tab) => (
+              <button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 whitespace-nowrap transition-colors ${activeTab === tab.toLowerCase() ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}>
+                {tab.charAt(0).toUpperCase() + tab.slice(1)} {tab === 'despesas' ? '/ Receitas' : ''}
               </button>
             ))}
-            <button 
-              onClick={() => setActiveTab('fotos')}
-              className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'fotos' ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}
-            >
+            <button onClick={() => setActiveTab('fotos')} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'fotos' ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}>
               <Camera size={14}/> Fotos
             </button>
-            
-            <button 
-              onClick={() => setActiveTab('documentos')}
-              className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'documentos' ? 'bg-white text-indigo-600 border-t-2 border-t-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}
-            >
+            <button onClick={() => setActiveTab('documentos')} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'documentos' ? 'bg-white text-indigo-600 border-t-2 border-t-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}>
               <Paperclip size={14}/> Arquivos
             </button>
-
             <div className="flex-1 flex justify-end items-center pr-4 bg-gray-50 min-w-[50px]">
                <button onClick={() => setSelectedCar(null)} className="text-gray-400 hover:text-red-600 p-1 hover:bg-gray-200 rounded transition-colors"><ChevronDown/></button>
             </div>
@@ -338,59 +243,201 @@ const Estoque = () => {
           {/* CONTEÚDO DO PAINEL */}
           <div className="p-4 overflow-auto flex-1 bg-white max-h-[40vh] md:max-h-none">
             
-            {/* 1. DETALHES */}
+            {/* 1. DETALHES (Resumo Geral) */}
             {activeTab === 'detalhes' && (
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm animate-fade-in h-full">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm animate-fade-in h-full">
                   <div className="space-y-2">
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Modelo:</span> <span className="font-bold uppercase">{selectedCar.modelo}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Placa:</span> <span className="font-bold uppercase">{selectedCar.placa}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500 flex items-center gap-1"><Fuel size={12}/> Combustível:</span> <span>{selectedCar.combustivel || '-'}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Entrada:</span> <span className="font-bold">{selectedCar.data_entrada ? new Date(selectedCar.data_entrada).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '-'}</span></div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500 flex items-center gap-1"><User size={12}/> Proprietário Ant.:</span> <span className="uppercase text-gray-700 font-medium">{selectedCar.proprietario_anterior || '-'}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Vendedor:</span> <span className="text-gray-700">{selectedCar.vendedor || '-'}</span></div>
-                    <div className="flex justify-between border-b border-gray-100 pb-1 bg-blue-50 px-1 rounded"><span className="text-blue-700 flex items-center gap-1 font-bold"><FileText size={12}/> Certificado:</span> <span className="font-bold text-gray-800">{selectedCar.certificado || '-'}</span></div>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-2 border-b">Veículo & Fluxo</h3>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Modelo:</span> <span className="font-bold uppercase text-gray-700">{selectedCar.modelo}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Placa:</span> <span className="font-bold uppercase text-gray-700">{selectedCar.placa}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Ano/Cor:</span> <span className="font-bold">{selectedCar.ano} • {selectedCar.cor}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Operação Entrada:</span> <span className={`font-bold ${selectedCar.operacao === 'Troca' ? 'text-blue-600' : 'text-gray-700'}`}>{selectedCar.operacao || 'Compra'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Operação Saída</span> <span className={`font-bold ${selectedCar.status === 'Vendido' ? 'text-red-600' : 'text-green-600'}`}>{selectedCar.status === 'Vendido' ? (selectedCar.operacao_saida || 'Venda') : 'Em Estoque'}</span></div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Entrada em:</span> <span className="font-bold">{selectedCar.data_entrada ? new Date(selectedCar.data_entrada).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '-'}</span></div>
                     {selectedCar.status === 'Vendido' && (
-                        <div className="flex justify-between border-b border-green-200 bg-green-50 px-1 rounded pb-1">
-                            <span className="text-green-700 font-bold">Comprador:</span> <span className="text-green-900 font-bold uppercase">{selectedCar.cliente_nome || '-'}</span>
-                        </div>
+                        <div className="flex justify-between border-b border-green-100 bg-green-50 px-1 rounded pb-1"><span className="text-green-700 font-bold">Saída em:</span> <span className="font-bold text-green-800">{selectedCar.data_venda ? new Date(selectedCar.data_venda).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '-'}</span></div>
                     )}
                   </div>
                   
-                  <div className="bg-yellow-50 p-2 border border-yellow-100 rounded text-xs text-gray-600 italic">
-                    <span className="font-semibold block mb-1">Observações:</span>
-                    {selectedCar.observacoes || "Sem observações cadastradas."}
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-2 border-b">Pessoas & Acessórios</h3>
+                    <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Proprietário Ant.:</span> <span className="uppercase text-gray-700 font-medium">{selectedCar.proprietario_anterior || '-'}</span></div>
+                    
+                    {selectedCar.status === 'Vendido' && (
+                        <>
+                            <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Quem Vendeu (Loja):</span> <span className="text-gray-700 font-bold">{selectedCar.vendedor || '-'}</span></div>
+                            <div className="flex justify-between border-b border-indigo-100 bg-indigo-50 px-1 rounded pb-1"><span className="text-indigo-700 font-bold">Comprador / Destino:</span> <span className="text-indigo-900 font-bold uppercase">{selectedCar.cliente_nome || '-'}</span></div>
+                        </>
+                    )}
+                    <div className="mt-3">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Opcionais Selecionados:</p>
+                        <div className="flex flex-wrap gap-1">
+                            {selectedCar.opcionais && selectedCar.opcionais.length > 0 ? (
+                                selectedCar.opcionais.map((opt, idx) => (<span key={idx} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 uppercase" title={opt.name}>{opt.code}</span>))
+                            ) : (<span className="text-gray-400 italic text-[11px]">Nenhum opcional</span>)}
+                        </div>
+                    </div>
                   </div>
-               </div>
+                  
+                  <div className="flex flex-col h-full">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-2 border-b">Observações Gerais</h3>
+                    <div className="bg-yellow-50 p-3 border border-yellow-100 rounded text-xs text-gray-600 italic flex-1 overflow-y-auto custom-scrollbar">
+                        {selectedCar.observacoes || selectedCar.descricao || "Sem observações cadastradas."}
+                    </div>
+                  </div>
+              </div>
             )}
 
-            {/* 2. FINANCEIRO */}
-            {activeTab === 'financeiro' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
-                  <div className="bg-white p-4 rounded border border-gray-200 shadow-sm flex flex-col justify-between">
-                      <div className="flex items-center gap-2 text-gray-500 mb-2"><DollarSign size={16} /> <span className="text-xs uppercase font-bold">Valor de Compra</span></div>
-                      <span className="text-xl font-bold text-gray-800">R$ {Number(selectedCar.custo || 0).toLocaleString()}</span>
-                  </div>
-                  <div onClick={() => setSelectedVehicleForExpenses(selectedCar)} className="bg-red-50 p-4 rounded border border-red-100 shadow-sm flex flex-col justify-between cursor-pointer hover:bg-red-100 transition-colors">
-                      <div className="flex items-center gap-2 text-red-600 mb-2"><Wrench size={16} /> <span className="text-xs uppercase font-bold">Total Despesas</span></div>
-                      <div className="flex justify-between items-end"><span className="text-xl font-bold text-red-700">+ R$ {financeiroData.totalDespesas.toLocaleString()}</span><span className="text-[10px] bg-red-200 text-red-800 px-2 py-1 rounded">Ver Detalhes</span></div>
-                  </div>
-                  <div className="bg-gray-800 text-white p-4 rounded shadow-md flex flex-col justify-between">
-                      <div className="flex items-center gap-2 text-gray-400 mb-2"><DollarSign size={16} /> <span className="text-xs uppercase font-bold">Custo Total Real</span></div>
-                      <span className="text-2xl font-bold text-white">R$ {(Number(selectedCar.custo || 0) + financeiroData.totalDespesas).toLocaleString()}</span>
-                      <span className="text-[10px] text-gray-400 mt-1">Compra + Despesas</span>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded border border-green-100 shadow-sm flex flex-col justify-between">
-                      <div className="flex items-center gap-2 text-green-700 mb-2"><TrendingUp size={16} /> <span className="text-xs uppercase font-bold">Venda Esperada</span></div>
-                      <span className="text-xl font-bold text-green-700">R$ {Number(selectedCar.valor || 0).toLocaleString()}</span>
-                      <div className="border-t border-green-200 mt-2 pt-1 flex justify-between"><span className="text-xs text-green-800">Lucro Est.:</span><span className="text-sm font-bold text-green-800">R$ {(Number(selectedCar.valor || 0) - (Number(selectedCar.custo || 0) + financeiroData.totalDespesas)).toLocaleString()}</span></div>
-                  </div>
+            {/* 2. DESPESAS (Lista Técnica) */}
+            {activeTab === 'despesas' && (
+                <div className="animate-fade-in h-full flex flex-col gap-4">
+                    <div className="flex justify-between items-center border-b pb-2">
+                        <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2"><Wrench size={16} className="text-orange-500"/> Lançamentos do Veículo</h3>
+                        <button onClick={() => setSelectedVehicleForExpenses(selectedCar)} className="bg-orange-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-orange-600 transition-colors flex items-center gap-1 shadow-sm"><Plus size={14}/> Lançar Custo/Receita</button>
+                    </div>
+                    <div className="flex-1 overflow-auto border rounded-lg bg-white shadow-sm">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-gray-50 text-gray-500 sticky top-0 border-b font-bold uppercase">
+                                <tr>
+                                    <th className="p-3 w-24">Data</th>
+                                    <th className="p-3">Descrição</th>
+                                    <th className="p-3 w-24 text-center">Tipo</th>
+                                    <th className="p-3 w-32">Valor</th>
+                                    <th className="p-3 w-20 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {financeiroData.despesas.length === 0 ? (
+                                    <tr><td colSpan="5" className="p-8 text-center text-gray-400 italic">Nenhum gasto ou receita registrado.</td></tr>
+                                ) : (
+                                    financeiroData.despesas.map((item) => (
+                                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="p-3 text-gray-500">{new Date(item.data_despesa).toLocaleDateString()}</td>
+                                            <td className="p-3 font-medium text-gray-700 uppercase">{item.descricao}</td>
+                                            <td className="p-3 text-center">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${item.tipo === 'receita' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.tipo || 'despesa'}</span>
+                                            </td>
+                                            <td className={`p-3 font-bold text-sm ${item.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>{item.tipo === 'receita' ? '+ ' : '- '}{Number(item.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                            <td className="p-3 text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <button onClick={() => setSelectedVehicleForExpenses({ ...selectedCar, editExpense: item })} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all" title="Editar"><Edit size={14}/></button>
+                                                    <button onClick={async () => {
+                                                        if(window.confirm("Deseja realmente excluir este lançamento?")) {
+                                                            try {
+                                                                await api.delete(`/despesas/${item.id}`);
+                                                                const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
+                                                                const data = res.data;
+                                                                const totalD = data.filter(d => d.tipo !== 'receita').reduce((acc, i) => acc + Number(i.valor), 0);
+                                                                const totalR = data.filter(d => d.tipo === 'receita').reduce((acc, i) => acc + Number(i.valor), 0);
+                                                                setFinanceiroData({ despesas: data, totalDespesas: totalD, totalReceitas: totalR });
+                                                            } catch (e) { alert("Erro ao excluir."); }
+                                                        }
+                                                    }} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all" title="Excluir"><Trash2 size={14}/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* 3. FOTOS */}
+            {/* 3. FINANCEIRO (Painel Gerencial) */}
+            {activeTab === 'financeiro' && (
+                <div className="animate-fade-in h-full flex flex-col lg:flex-row gap-4 p-4 overflow-y-auto custom-scrollbar">
+                    
+                    {/* COLUNA ESQUERDA: ENTRADA / CUSTOS */}
+                    <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                        <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
+                        
+                        <div>
+                            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <ArrowRightLeft size={16}/> Operação de Entrada
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                                    <span className="text-gray-600 text-xs sm:text-sm">Valor de Compra</span>
+                                    <span className="font-bold text-gray-800 text-sm sm:text-base">R$ {Number(selectedCar.custo || 0).toLocaleString()}</span>
+                                </div>
+                                
+                                <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                                    <span className="text-gray-600 text-xs sm:text-sm">Total Despesas (+)</span>
+                                    <span className="font-bold text-red-600 text-sm sm:text-base">R$ {financeiroData.totalDespesas.toLocaleString()}</span>
+                                </div>
+
+                                {/* Info de Troca na Entrada */}
+                                {selectedCar.operacao === 'Troca' && (
+                                    <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-100 text-xs">
+                                        <p className="text-blue-700 font-bold mb-1">Origem: Troca</p>
+                                        <p className="text-gray-600">Ref: <span className="font-bold">{selectedCar.veiculo_troca_nome || 'Veículo anterior'}</span></p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-1">Custo Total Acumulado</p>
+                            {/* CORREÇÃO: break-all para forçar quebra e leading-tight para altura de linha */}
+                            <p className="text-xl sm:text-2xl font-black text-gray-800 break-all leading-tight">
+                                R$ {(Number(selectedCar.custo || 0) + financeiroData.totalDespesas).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* ÍCONE CENTRAL */}
+                    <div className="flex items-center justify-center text-gray-300 shrink-0 py-2 lg:py-0">
+                        <ChevronDown size={24} className="lg:hidden"/> 
+                        <ArrowRight size={32} className="hidden lg:block"/>
+                    </div>
+
+                    {/* COLUNA DIREITA: SAÍDA / RETORNO */}
+                    <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                        <div className={`absolute top-0 left-0 w-1.5 h-full ${selectedCar.status === 'Vendido' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                        
+                        <div>
+                            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <TrendingUp size={16}/> {selectedCar.status === 'Vendido' ? 'Operação de Saída' : 'Expectativa de Saída'}
+                            </h3>
+
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                                    <span className="text-gray-600 text-xs sm:text-sm">{selectedCar.status === 'Vendido' ? 'Valor Final Venda' : 'Preço de Venda (Meta)'}</span>
+                                    <span className="font-bold text-green-700 text-sm sm:text-base">R$ {Number(selectedCar.valor || 0).toLocaleString()}</span>
+                                </div>
+
+                                <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                                    <span className="text-gray-600 text-xs sm:text-sm">Receitas Extras (+)</span>
+                                    <span className="font-bold text-green-600 text-sm sm:text-base">R$ {financeiroData.totalReceitas.toLocaleString()}</span>
+                                </div>
+
+                                {/* Info de Troca na Saída */}
+                                {selectedCar.operacao_saida === 'Troca' && (
+                                    <div className="bg-orange-50 p-2 sm:p-3 rounded-lg border border-orange-100 text-xs">
+                                        <p className="text-orange-700 font-bold mb-1">Saída com Troca</p>
+                                        <p className="text-gray-600">Entrada de outro veículo como parte.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-1">
+                                {selectedCar.status === 'Vendido' ? 'Lucro Real Consolidado' : 'Projeção de Lucro'}
+                            </p>
+                            {/* CORREÇÃO: break-all para forçar quebra */}
+                            <p className={`text-xl sm:text-2xl font-black break-all leading-tight ${selectedCar.status === 'Vendido' ? 'text-green-600' : 'text-blue-600'}`}>
+                                R$ {(Number(selectedCar.valor || 0) + financeiroData.totalReceitas - (Number(selectedCar.custo || 0) + financeiroData.totalDespesas)).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            )}
+
+            {/* 4. FOTOS */}
             {activeTab === 'fotos' && (
               <div className="flex flex-wrap gap-4 animate-fade-in">
                   <div className="w-full md:w-48 h-32 bg-gray-200 rounded flex items-center justify-center border text-gray-400 text-xs overflow-hidden relative border-gray-300">
@@ -399,55 +446,28 @@ const Estoque = () => {
               </div>
             )}
 
-            {/* 4. DOCUMENTOS (LISTA DE ARQUIVOS) */}
+            {/* 5. DOCUMENTOS */}
             {activeTab === 'documentos' && (
                 <div className="animate-fade-in h-full flex flex-col">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                            <Paperclip size={16} className="text-indigo-500"/> Arquivos Anexados
-                        </h3>
-                        <button 
-                            onClick={() => setSelectedVehicleDocs(selectedCar)}
-                            className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1 shadow-sm"
-                        >
-                            <Plus size={14}/> Gerenciar Documentos
-                        </button>
+                        <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2"><Paperclip size={16} className="text-indigo-500"/> Arquivos Anexados</h3>
+                        <button onClick={() => setSelectedVehicleDocs(selectedCar)} className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1 shadow-sm"><Plus size={14}/> Gerenciar Documentos</button>
                     </div>
-
                     {vehicleDocsList.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-lg p-6 bg-gray-50 text-gray-400">
-                            <FileText size={32} className="mb-2 opacity-50"/>
-                            <p className="text-xs">Nenhum documento encontrado.</p>
+                            <FileText size={32} className="mb-2 opacity-50"/><p className="text-xs">Nenhum documento encontrado.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                             {vehicleDocsList.map((doc) => (
                                 <div key={doc.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group">
-                                    <div className="flex items-start gap-3 mb-2">
-                                        <div className={`p-2 rounded ${doc.tipo && doc.tipo.includes('pdf') ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
-                                            <FileText size={20}/>
-                                        </div>
-                                        <div className="overflow-hidden">
-                                            <p className="font-bold text-xs text-gray-700 truncate" title={doc.titulo}>{doc.titulo}</p>
-                                            <p className="text-[10px] text-gray-400">{new Date(doc.created_at).toLocaleDateString()}</p>
-                                        </div>
+                                    <div className="flex items-start gap-3 mb-2 overflow-hidden">
+                                        <div className={`p-2 rounded shrink-0 ${doc.tipo && doc.tipo.includes('pdf') ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><FileText size={20}/></div>
+                                        <div className="truncate"><p className="font-bold text-xs text-gray-700 truncate" title={doc.titulo}>{doc.titulo}</p><p className="text-[10px] text-gray-400">{new Date(doc.created_at).toLocaleDateString()}</p></div>
                                     </div>
                                     <div className="flex gap-2 mt-1 border-t pt-2 border-gray-100">
-                                        <button 
-                                            onClick={() => handleOpenDoc(doc)}
-                                            className="flex-1 flex items-center justify-center gap-1 text-[10px] bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 py-1 rounded transition-colors"
-                                            title="Visualizar"
-                                        >
-                                            <FileText size={12}/> Ver
-                                        </button>
-                                        <a 
-                                            href={doc.arquivo} 
-                                            download={doc.titulo}
-                                            className="flex-1 flex items-center justify-center gap-1 text-[10px] bg-gray-50 hover:bg-green-50 text-gray-600 hover:text-green-600 py-1 rounded transition-colors"
-                                            title="Baixar"
-                                        >
-                                            <Camera size={12}/> Baixar
-                                        </a>
+                                        <button onClick={() => handleOpenDoc(doc)} className="flex-1 text-[10px] bg-gray-50 hover:bg-indigo-50 text-gray-600 py-1 rounded transition-colors">Ver</button>
+                                        <a href={doc.arquivo} download={doc.titulo} className="flex-1 text-center text-[10px] bg-gray-50 hover:bg-green-50 text-gray-600 py-1 rounded transition-colors">Baixar</a>
                                     </div>
                                 </div>
                             ))}
@@ -460,14 +480,15 @@ const Estoque = () => {
       )}
 
       {/* --- MODAIS --- */}
-      <VehicleModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSave={handleSaveVehicle}
-        initialData={selectedCar}
-        mode={modalMode}
-        clientsList={clients} 
-      />
+      {isModalOpen && (
+        <VehicleModal 
+            vehicle={selectedCar} 
+            clients={clients} 
+            vehiclesList={vehicles}
+            onClose={() => setIsModalOpen(false)} 
+            onSuccess={() => { fetchData(); setIsModalOpen(false); }}
+        />
+      )}
 
       <CloseFileModal 
         isOpen={isCloseModalOpen}
@@ -477,21 +498,14 @@ const Estoque = () => {
         clientsList={clients}
       />
 
-      {/* Aqui passamos as Props para o DocumentosModal */}
       {selectedVehicleDocs && (
         <DocumentosModal 
             vehicle={selectedVehicleDocs} 
-            storeConfig={storeConfig} // <-- IMPORTANTE
-            clients={clients}         // <-- IMPORTANTE
+            storeConfig={storeConfig}
+            clients={clients}
             onClose={() => {
                 setSelectedVehicleDocs(null);
-                if (activeTab === 'documentos' && selectedCar) {
-                    const fetchDocs = async () => {
-                        const res = await api.get(`/veiculos/${selectedCar.id}/documentos`);
-                        setVehicleDocsList(res.data);
-                    };
-                    fetchDocs();
-                }
+                if (activeTab === 'documentos' && selectedCar) fetchData();
             }} 
         />
       )}
@@ -501,15 +515,7 @@ const Estoque = () => {
             vehicle={selectedVehicleForExpenses}
             onClose={() => {
                 setSelectedVehicleForExpenses(null);
-                if(selectedCar && activeTab === 'financeiro') {
-                    const fetchDespesas = async () => {
-                        const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
-                        const data = res.data;
-                        const total = data.reduce((acc, item) => acc + Number(item.valor), 0);
-                        setFinanceiroData({ despesas: data, totalDespesas: total });
-                    };
-                    fetchDespesas();
-                }
+                if(selectedCar && (activeTab === 'financeiro' || activeTab === 'despesas')) fetchData();
             }}
         />
       )}

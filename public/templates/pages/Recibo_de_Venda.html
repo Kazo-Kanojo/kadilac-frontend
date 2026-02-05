@@ -2,48 +2,45 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recibo de Venda</title>
     <link rel="stylesheet" href="../style.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="recibo-a4">
-        <header>
-            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
-            <p style="font-size: 12px;">{{LOJA_ENDERECO}} - {{LOJA_CIDADE}} | Tel: {{LOJA_TELEFONE}}</p>
+    <div class="recibo-a4 recibo-venda">
+        <header class="doc-header">
+            <h1 style="text-transform: uppercase;">{{LOJA_RAZAO}}</h1>
             <p class="subtitulo">*** Recibo de Venda ***</p>
         </header>
         
         <div class="valor-box">
-            {{VEICULO_PRECO}}
+            {{VALOR_VENDA}}
         </div>
 
         <main>
-            <p class="paragrafo-principal">
-                Recebemos de <strong>{{CLIENTE_NOME}}</strong>, CPF/CNPJ: <strong>{{CLIENTE_CPF}}</strong>, R.G.: <strong>{{CLIENTE_RG}}</strong>, residente em: <strong>{{CLIENTE_ENDERECO}}</strong>, Telefone: <strong>{{CLIENTE_TELEFONE}}</strong>.
-            </p>
-            
-            <p class="paragrafo-principal">
-                A importância supramencionada referente à venda do veículo abaixo descrito:
+            <p class="paragrafo-principal" style="line-height: 1.8; margin-top: 30px;">
+                Recebemos de <strong>{{CLIENTE_NOME}}</strong>, CPF/CNPJ: <strong>{{CLIENTE_CPF}}</strong>, RG: <strong>{{CLIENTE_RG}}</strong>, 
+                com domicílio em: <strong>{{CLIENTE_ENDERECO}}</strong>,
+                a importância supra de <strong>{{VALOR_VENDA}}</strong>, referente à venda de um veículo:
             </p>
 
-            <section class="veiculo-info">
-                <div class="veiculo-detalhes">
-                    <p><strong>Veículo:</strong> {{VEICULO_MARCA}} {{VEICULO_MODELO}}</p>
-                    <p><strong>Placa:</strong> {{VEICULO_PLACA}} / <strong>Cor:</strong> {{VEICULO_COR}}</p>
-                    <p><strong>Ano:</strong> {{VEICULO_ANO}}</p>
-                    <p><strong>Renavam:</strong> {{VEICULO_RENAVAM}}</p>
-                    <p><strong>Chassi:</strong> {{VEICULO_CHASSI}}</p>
-                </div>
-                
-                <div class="pagamento-info">
-                    <p><strong>Vendedor:</strong> {{VENDEDOR_NOME}}</p>
-                    <p><strong>Observações:</strong> {{OBSERVACOES}}</p>
+            <section class="veiculo-box" style="margin: 20px 0; border: 1px dashed #000; padding: 15px;">
+                <div class="field-group">
+                    <div class="field full"><label>Marca/Modelo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
+                    <div class="field half"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
+                    <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
+                    <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
+                    <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
+                    <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
                 </div>
             </section>
+            
+            <div class="obs-box" style="border: 1px solid #000; padding: 10px; margin: 10px 0;">
+                <p><strong>OBSERVAÇÕES:</strong></p>
+                <p>{{OBSERVACOES}}</p>
+            </div>
 
-            <section class="termos">
+            <section class="termos" style="margin-top: 20px;">
                 <p>A venda deste veículo foi feita livre e desembaraçadamente de qualquer ônus, podendo o comprador transferir para o seu nome o certificado de propriedade sem reserva de domínio.</p>
                 <p>Para maior clareza, firmo o presente recibo.</p>
             </section>
@@ -57,7 +54,7 @@
                 <div class="assinatura-block">
                     <div class="linha-assinatura"></div>
                     <p style="text-transform: uppercase;">{{LOJA_RAZAO}}</p>
-                    <p>CNPJ: {{LOJA_CNPJ}}</p>
+                    <p>Vendedor (Loja)</p>
                 </div>
                 <div class="assinatura-block">
                     <div class="linha-assinatura"></div>
@@ -67,40 +64,32 @@
             </div>
         </footer>
     </div>
-
+    
+    <script src="script_preencher.js"></script>
     <script>
+        // Caso não use arquivo externo, o bloco de script está abaixo (copiar para todos)
         window.addEventListener('DOMContentLoaded', () => {
             const data = JSON.parse(localStorage.getItem('sistema_print_data'));
-            if (!data) return alert("Erro: Dados não encontrados.");
+            if (!data) return;
 
-            const formatMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
-
+            const fMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+            
             const replacements = {
-                '{{CLIENTE_NOME}}': data.client?.nome || '____________________',
-                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '____________________',
-                '{{CLIENTE_RG}}': data.client?.rg || '____________________',
-                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '____________________',
-                '{{CLIENTE_TELEFONE}}': data.client?.telefone || '____________________',
-                
-                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '____________________',
-                '{{VEICULO_MARCA}}': data.vehicle?.marca || '', 
-                '{{VEICULO_PLACA}}': data.vehicle?.placa || '____________________',
-                '{{VEICULO_COR}}': data.vehicle?.cor || '____________________',
-                '{{VEICULO_ANO}}': data.vehicle?.ano || '____________________',
-                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '____________________',
-                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '____________________',
-                '{{VEICULO_PRECO}}': formatMoney(data.sale?.price),
-                
-                '{{VENDEDOR_NOME}}': data.sale?.seller || '____________________',
+                '{{LOJA_RAZAO}}': data.store?.razao_social || 'LOJA',
+                '{{LOJA_CIDADE}}': data.store?.cidade || 'São Paulo',
+                '{{CLIENTE_NOME}}': data.client?.nome || '.............................................',
+                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '...................',
+                '{{CLIENTE_RG}}': data.client?.rg || '...................',
+                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '..........................................................',
+                '{{VALOR_VENDA}}': fMoney(data.sale?.price || data.vehicle.preco_venda),
+                '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
+                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
+                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
+                '{{VEICULO_COR}}': data.vehicle?.cor || '',
+                '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
+                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
+                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
                 '{{OBSERVACOES}}': data.sale?.obs || '',
-
-                '{{LOJA_NOME}}': data.store?.nome_loja || 'NOME DA LOJA',
-                '{{LOJA_RAZAO}}': data.store?.razao_social || 'RAZÃO SOCIAL',
-                '{{LOJA_CNPJ}}': data.store?.cnpj || 'CNPJ',
-                '{{LOJA_ENDERECO}}': data.store?.endereco || '',
-                '{{LOJA_CIDADE}}': data.store?.cidade || 'Cidade',
-                '{{LOJA_TELEFONE}}': data.store?.telefone || '',
-
                 '{{DATA_ATUAL}}': data.date
             };
 
@@ -109,7 +98,6 @@
                 html = html.replace(new RegExp(key, 'g'), val);
             }
             document.body.innerHTML = html;
-
             setTimeout(() => window.print(), 500);
         });
     </script>

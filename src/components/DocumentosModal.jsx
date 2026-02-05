@@ -23,33 +23,42 @@ const DocumentosModal = ({ vehicle, onClose, storeConfig, clients }) => {
   };
 
   // --- LÓGICA DE IMPRESSÃO (RECIBOS AUTOMÁTICOS) ---
-  const handlePrintSystemDoc = (docType) => {
+  const handlePrintSystemDoc = async (docType) => { // Agora é ASYNC
     if (!storeConfig) return alert("Erro: Configurações da loja não carregadas.");
 
     let targetClientName = '';
     let price = 0;
     let templateFile = '';
     let obs = '';
+    let expensesList = []; // Nova lista de despesas para o cálculo de lucro
 
     // Define os dados baseados no tipo de recibo
     if (docType === 'venda') {
         if (vehicle.status !== 'Vendido') return alert("Este veículo ainda não foi vendido.");
-        targetClientName = vehicle.cliente_nome; // Nome salvo no veículo na hora da venda
-        price = vehicle.valor; // Preço de Venda
+        targetClientName = vehicle.cliente_nome;
+        price = vehicle.valor;
         templateFile = 'Recibo_de_Venda.html';
         obs = `Venda referente ao veículo ${vehicle.modelo}.`;
 
     } else if (docType === 'compra') {
-        targetClientName = vehicle.proprietario_anterior; // De quem a loja comprou
-        price = vehicle.custo; // Preço de Custo
+        targetClientName = vehicle.proprietario_anterior;
+        price = vehicle.custo;
         templateFile = 'Compra.html';
         obs = `Aquisição de veículo para estoque.`;
 
     } else if (docType === 'termo') {
         // Usa o cliente atual (se vendido) ou o proprietário anterior
         targetClientName = vehicle.cliente_nome || vehicle.proprietario_anterior;
-        templateFile = 'Termo.html'; 
-        obs = `Termo de responsabilidade.`;
+        templateFile = 'ficha.html'; // Alterado para usar o novo template de Ficha Financeira
+        obs = `Ficha do veículo.`;
+
+        // BUSCA AS DESPESAS PARA O CÁLCULO DE LUCRO NA FICHA
+        try {
+            const res = await api.get(`/veiculos/${vehicle.id}/despesas`);
+            expensesList = res.data;
+        } catch (error) {
+            console.warn("Não foi possível carregar as despesas para a impressão.", error);
+        }
     }
 
     // Tenta achar os dados completos do cliente (CPF, Endereço) na lista
@@ -64,6 +73,7 @@ const DocumentosModal = ({ vehicle, onClose, storeConfig, clients }) => {
             ...vehicle,
             marca: vehicle.marca || ''
         },
+        expenses: expensesList, // Passa as despesas para o HTML
         sale: {
             price: price,
             seller: storeConfig.nome_loja,
@@ -124,6 +134,7 @@ const DocumentosModal = ({ vehicle, onClose, storeConfig, clients }) => {
   };
 
   const handleDelete = async (id) => {
+    // eslint-disable-next-line no-restricted-globals
     if(!confirm("Tem certeza que deseja apagar este documento?")) return;
     try {
       await api.delete(`/documentos/${id}`);
@@ -196,14 +207,14 @@ const DocumentosModal = ({ vehicle, onClose, storeConfig, clients }) => {
                         </div>
                     </button>
 
-                    {/* Botão Termo */}
+                    {/* Botão Termo / Ficha */}
                     <button 
                         onClick={() => handlePrintSystemDoc('termo')} 
                         className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-purple-400 hover:shadow-md transition-all group text-left"
                     >
                         <div>
                             <span className="font-bold text-gray-700 block">Termo / Ficha</span>
-                            <span className="text-xs text-gray-400">Dados Cadastrais</span>
+                            <span className="text-xs text-gray-400">Dados & Financeiro</span>
                         </div>
                         <div className="p-2 bg-purple-50 text-purple-600 rounded-full group-hover:bg-purple-600 group-hover:text-white transition-colors">
                             <FileText size={20} />

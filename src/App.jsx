@@ -3,7 +3,6 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Estoque from './components/Estoque';
 import Clientes from './components/clientes';
-import NovaFicha from './components/NovaFicha';
 import Financeiro from './components/Financeiro';
 import Configuracoes from './components/Configuracoes';
 import Login from './components/login';
@@ -107,7 +106,6 @@ function App() {
             {activeScreen === 'dashboard' && <Dashboard setActiveScreen={setActiveScreen} />}
             {activeScreen === 'estoque' && <Estoque />}
             {activeScreen === 'clientes' && <Clientes />}
-            {activeScreen === 'nova-ficha' && <NovaFicha />}
             {activeScreen === 'financeiro' && <Financeiro />} 
             {activeScreen === 'config' && <Configuracoes onUpdate={refreshStoreData} />}
             

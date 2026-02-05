@@ -9,7 +9,7 @@
 <body>
     <div class="recibo-a4 recibo-compra">
         <header class="doc-header">
-            <h1 style="text-transform: uppercase;">{{LOJA_NOME}}</h1>
+            <h1 style="text-transform: uppercase;">{{LOJA_RAZAO}}</h1>
             <p class="separador">***</p>
             <h2>Recibo de Compra</h2>
             <p class="separador">***</p>
@@ -17,46 +17,62 @@
 
         <main>
             <div class="info-bloco">
-                <p>A <strong>{{LOJA_RAZAO}}</strong>, CNPJ: <strong>{{LOJA_CNPJ}}</strong>, estabelecida em: <strong>{{LOJA_ENDERECO}}</strong> - {{LOJA_CIDADE}}.</p>
+                <p>
+                    A <strong>{{LOJA_RAZAO}}</strong>, 
+                    CNPJ: <strong>{{LOJA_CNPJ}}</strong>, 
+                    com domicílio em: <strong>{{LOJA_ENDERECO}}</strong>, 
+                    Cidade: <strong>{{LOJA_CIDADE}}</strong>.
+                </p>
             </div>
             
-            <div class="info-bloco">
+            <div class="info-bloco" style="margin-top: 20px;">
                 <p>
-                    Comprou de <strong>{{CLIENTE_NOME}}</strong>, CPF: <strong>{{CLIENTE_CPF}}</strong>, RG: <strong>{{CLIENTE_RG}}</strong>, residente em <strong>{{CLIENTE_ENDERECO}}</strong>.
+                    Comprou de <strong>{{PROPRIETARIO_NOME}}</strong> (Proprietário Anterior), 
+                    referente ao veículo abaixo descrito:
                 </p>
             </div>
 
-            <p>O veículo abaixo descrito:</p>
+            <section class="veiculo-box" style="margin-top: 20px;">
+                <div class="field-group">
+                    <div class="field full"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
+                    
+                    <div class="field half"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
+                    <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
+                    
+                    <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
+                    <div class="field half"><label>Combustível:</label><span>{{VEICULO_COMBUSTIVEL}}</span></div>
 
-            <section class="veiculo-box">
-                <div class="field full"><label>Veículo:</label><span>{{VEICULO_MARCA}} {{VEICULO_MODELO}}</span></div>
-                <div class="field half"><label>Ano:</label><span>{{VEICULO_ANO}}</span></div>
-                <div class="field half"><label>Cor:</label><span>{{VEICULO_COR}}</span></div>
-                <div class="field half"><label>Placa:</label><span>{{VEICULO_PLACA}}</span></div>
-                <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
-                <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
-                <div class="field full"><label>Certificado:</label><span>{{VEICULO_CERTIFICADO}}</span></div>
+                    <div class="field full"><label>Renavam:</label><span>{{VEICULO_RENAVAM}}</span></div>
+                    <div class="field full"><label>Chassi:</label><span>{{VEICULO_CHASSI}}</span></div>
+                    <div class="field full"><label>Certificado:</label><span>{{VEICULO_CERTIFICADO}}</span></div>
+                </div>
             </section>
             
-            <div class="observacoes">
-                <p>Pagamento no valor de {{VEICULO_PRECO}}.</p>
-                <p>Obs: {{OBSERVACOES}}</p>
-                <p>O veículo é entregue livre e desembaraçado de quaisquer ônus, multas ou restrições até a presente data.</p>
+            <div class="observacoes" style="border: 1px solid #000; padding: 15px; margin: 20px 0; min-height: 80px;">
+                <p><strong>VALOR PAGO: {{VALOR_COMPRA}}</strong></p>
+                <br>
+                <p><strong>OBSERVAÇÕES:</strong></p>
+                <p>{{OBSERVACOES}}</p>
             </div>
 
-            <p class="data-local">{{LOJA_CIDADE}}, {{DATA_ATUAL}}.</p>
+            <p style="margin-top: 20px;">A compra deste veículo foi feita livre e desembaraçadamente de quaisquer ônus.</p>
+            <p>Para maior clareza, firmo o presente recibo.</p>
+
+            <p class="data-local" style="margin-top: 40px; text-align: center;">
+                {{LOJA_CIDADE}}, {{DATA_ATUAL}}.
+            </p>
 
             <footer>
-                <div class="assinaturas">
-                    <div class="assinatura-block">
-                        <div class="linha-assinatura"></div>
-                        <p style="text-transform: uppercase;">{{LOJA_RAZAO}}</p>
-                        <p>Comprador (Loja)</p>
+                <div class="assinaturas" style="display: flex; justify-content: space-around; margin-top: 60px;">
+                    <div class="assinatura-block" style="text-align: center; width: 40%;">
+                        <div class="linha-assinatura" style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
+                        <p style="font-weight: bold; text-transform: uppercase;">{{LOJA_RAZAO}}</p>
+                        <p style="font-size: 10pt;">Comprador (Loja)</p>
                     </div>
-                    <div class="assinatura-block">
-                        <div class="linha-assinatura"></div>
-                        <p style="text-transform: uppercase;">{{CLIENTE_NOME}}</p>
-                        <p>Vendedor (Cliente)</p>
+                    <div class="assinatura-block" style="text-align: center; width: 40%;">
+                        <div class="linha-assinatura" style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
+                        <p style="font-weight: bold; text-transform: uppercase;">{{PROPRIETARIO_NOME}}</p>
+                        <p style="font-size: 10pt;">Vendedor (Proprietário Ant.)</p>
                     </div>
                 </div>
             </footer>
@@ -65,38 +81,51 @@
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
+            // 1. Pega os dados salvos no LocalStorage (pelo React)
             const data = JSON.parse(localStorage.getItem('sistema_print_data'));
             if (!data) return;
-            const formatMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
 
+            // Função para formatar dinheiro
+            const fMoney = (val) => val ? parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+
+            // 2. Mapa de Substituição (Variável -> Valor Real)
             const replacements = {
-                '{{CLIENTE_NOME}}': data.client?.nome || '',
-                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '',
-                '{{CLIENTE_RG}}': data.client?.rg || '',
-                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '',
-                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
-                '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
-                '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
-                '{{VEICULO_COR}}': data.vehicle?.cor || '',
-                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
-                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
-                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
-                '{{VEICULO_CERTIFICADO}}': data.vehicle?.certificado || '',
-                '{{VEICULO_PRECO}}': formatMoney(data.sale?.price),
-                '{{OBSERVACOES}}': data.sale?.obs || '',
-                '{{LOJA_NOME}}': data.store?.nome_loja || '',
-                '{{LOJA_RAZAO}}': data.store?.razao_social || '',
+                // Loja
+                '{{LOJA_RAZAO}}': data.store?.razao_social || 'CONCESSIONÁRIA',
                 '{{LOJA_CNPJ}}': data.store?.cnpj || '',
                 '{{LOJA_ENDERECO}}': data.store?.endereco || '',
                 '{{LOJA_CIDADE}}': data.store?.cidade || '',
+                
+                // Vendedor (De quem a loja comprou)
+                '{{PROPRIETARIO_NOME}}': data.vehicle?.proprietario_anterior || '.......................................',
+                
+                // Veículo
+                '{{VEICULO_MARCA}}': data.vehicle?.marca || '',
+                '{{VEICULO_MODELO}}': data.vehicle?.modelo || '',
+                '{{VEICULO_ANO}}': data.vehicle?.ano || '',
+                '{{VEICULO_COR}}': data.vehicle?.cor || '',
+                '{{VEICULO_PLACA}}': data.vehicle?.placa || '',
+                '{{VEICULO_COMBUSTIVEL}}': data.vehicle?.combustivel || '',
+                '{{VEICULO_RENAVAM}}': data.vehicle?.renavam || '',
+                '{{VEICULO_CHASSI}}': data.vehicle?.chassi || '',
+                '{{VEICULO_CERTIFICADO}}': data.vehicle?.certificado || '',
+                
+                // Valores
+                '{{VALOR_COMPRA}}': fMoney(data.sale?.price || data.vehicle.preco_compra),
+                '{{OBSERVACOES}}': data.sale?.obs || '',
+                
+                // Data
                 '{{DATA_ATUAL}}': data.date
             };
 
+            // 3. Aplica as substituições no HTML
             let html = document.body.innerHTML;
             for (const [key, val] of Object.entries(replacements)) {
                 html = html.replace(new RegExp(key, 'g'), val);
             }
             document.body.innerHTML = html;
+
+            // 4. Imprime automaticamente após carregar
             setTimeout(() => window.print(), 500);
         });
     </script>
