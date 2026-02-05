@@ -150,14 +150,6 @@ const Dashboard = ({ setActiveScreen }) => {
               
               <div className="space-y-3">
                 <button 
-                  onClick={() => setActiveScreen ? setActiveScreen('nova-ficha') : window.location.href = '/'}
-                  className="w-full bg-white text-[#D80000] py-3 px-4 rounded-lg font-bold text-sm hover:bg-red-50 transition-colors flex items-center justify-between group shadow-sm"
-                >
-                  Nova Ficha de Venda
-                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
-                </button>
-                
-                <button 
                   onClick={() => setActiveScreen ? setActiveScreen('estoque') : window.location.href = '/'}
                   className="w-full bg-red-800 text-white py-3 px-4 rounded-lg font-bold text-sm hover:bg-red-900 transition-colors flex items-center justify-between border border-red-700 shadow-sm"
                 >

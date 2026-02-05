@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, Fuel, Wrench, DollarSign, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight } from 'lucide-react';
+import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
@@ -25,7 +25,7 @@ const Estoque = () => {
   const [selectedVehicleDocs, setSelectedVehicleDocs] = useState(null);
   const [selectedVehicleForExpenses, setSelectedVehicleForExpenses] = useState(null);
   
-  // Estado financeiro (Separado: Total Despesas e Total Receitas Extras)
+  // Estado financeiro
   const [financeiroData, setFinanceiroData] = useState({ despesas: [], totalDespesas: 0, totalReceitas: 0 });
   const [vehicleDocsList, setVehicleDocsList] = useState([]);
 
@@ -65,7 +65,6 @@ const Estoque = () => {
             try {
                 const res = await api.get(`/veiculos/${selectedCar.id}/despesas`);
                 const data = res.data;
-                // Separa o que é despesa do que é receita
                 const despesasTotal = data.filter(d => d.tipo !== 'receita').reduce((acc, item) => acc + Number(item.valor), 0);
                 const receitasTotal = data.filter(d => d.tipo === 'receita').reduce((acc, item) => acc + Number(item.valor), 0);
                 
@@ -98,21 +97,7 @@ const Estoque = () => {
   const handleEditCar = () => { if (!selectedCar) return alert("Selecione um veículo."); setIsModalOpen(true); };
   const handleCloseFicha = () => { if (!selectedCar) return alert("Selecione um veículo."); if (selectedCar.status === 'Vendido') return alert("Já vendido."); setIsCloseModalOpen(true); };
 
-  const handleDeleteCar = async () => {
-    if (!selectedCar) return;
-    // eslint-disable-next-line no-restricted-globals
-    if (confirm(`Tem certeza que deseja excluir o veículo ${selectedCar.modelo}?`)) {
-        try {
-            await api.delete(`/veiculos/${selectedCar.id}`);
-            const updatedList = vehicles.filter(v => v.id !== selectedCar.id);
-            setVehicles(updatedList);
-            setFilteredVehicles(updatedList);
-            setSelectedCar(null);
-        } catch (error) {
-            alert("Erro ao excluir: " + (error.response?.data?.message || error.message));
-        }
-    }
-  };
+  // REMOVIDO: handleDeleteCar
 
   const confirmCloseFicha = async (saleData) => {
      try {
@@ -158,12 +143,7 @@ const Estoque = () => {
             <span className="text-xs font-bold text-gray-600">Fechar</span>
          </button>
          
-         <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
-         
-         <button onClick={handleDeleteCar} disabled={!selectedCar} className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedCar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-200'}`}>
-            <Trash2 size={24} className="text-red-500 mb-1 group-hover:scale-110 transition-transform"/>
-            <span className="text-xs font-bold text-gray-600">Excluir</span>
-         </button>
+         {/* BOTÃO EXCLUIR REMOVIDO DAQUI */}
 
          <div className="w-full md:flex-1"></div>
          
@@ -262,7 +242,6 @@ const Estoque = () => {
                   <div className="space-y-2">
                     <h3 className="text-xs font-bold text-gray-400 uppercase mb-2 border-b">Pessoas & Acessórios</h3>
                     <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Proprietário Ant.:</span> <span className="uppercase text-gray-700 font-medium">{selectedCar.proprietario_anterior || '-'}</span></div>
-                    
                     {selectedCar.status === 'Vendido' && (
                         <>
                             <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-500">Quem Vendeu (Loja):</span> <span className="text-gray-700 font-bold">{selectedCar.vendedor || '-'}</span></div>
@@ -344,7 +323,7 @@ const Estoque = () => {
                 </div>
             )}
 
-            {/* 3. FINANCEIRO (Painel Gerencial) */}
+            {/* 3. FINANCEIRO (Correção de Exibição de Números) */}
             {activeTab === 'financeiro' && (
                 <div className="animate-fade-in h-full flex flex-col lg:flex-row gap-4 p-4 overflow-y-auto custom-scrollbar">
                     
