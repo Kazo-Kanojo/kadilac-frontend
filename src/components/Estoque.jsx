@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Trash2, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight } from 'lucide-react';
+import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
@@ -18,6 +18,7 @@ const Estoque = () => {
   const [selectedCar, setSelectedCar] = useState(null);
   const [activeTab, setActiveTab] = useState('detalhes');
   const [isLoading, setIsLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState('Todos'); // <--- NOVO ESTADO DO FILTRO
   
   // Estados dos Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,7 +41,7 @@ const Estoque = () => {
       ]);
 
       setVehicles(vehiclesRes.data);
-      setFilteredVehicles(vehiclesRes.data);
+      // Não setamos filteredVehicles diretamente aqui mais, o useEffect do filtro fará isso
       setClients(clientsRes.data);
       setStoreConfig(configRes.data);
       
@@ -54,6 +55,17 @@ const Estoque = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // --- LÓGICA DO FILTRO (NOVO) ---
+  useEffect(() => {
+    if (filterStatus === 'Todos') {
+      setFilteredVehicles(vehicles);
+    } else if (filterStatus === 'Em Estoque') {
+      setFilteredVehicles(vehicles.filter(v => v.status === 'Em estoque' || v.status === 'Disponível'));
+    } else if (filterStatus === 'Vendidos') {
+      setFilteredVehicles(vehicles.filter(v => v.status === 'Vendido'));
+    }
+  }, [filterStatus, vehicles]);
 
   // --- EFEITO PARA CARREGAR DADOS DAS ABAS ---
   useEffect(() => {
@@ -96,8 +108,6 @@ const Estoque = () => {
   const handleNewCar = () => { setSelectedCar(null); setIsModalOpen(true); };
   const handleEditCar = () => { if (!selectedCar) return alert("Selecione um veículo."); setIsModalOpen(true); };
   const handleCloseFicha = () => { if (!selectedCar) return alert("Selecione um veículo."); if (selectedCar.status === 'Vendido') return alert("Já vendido."); setIsCloseModalOpen(true); };
-
-  // REMOVIDO: handleDeleteCar
 
   const confirmCloseFicha = async (saleData) => {
      try {
@@ -143,17 +153,20 @@ const Estoque = () => {
             <span className="text-xs font-bold text-gray-600">Fechar</span>
          </button>
          
-         {/* BOTÃO EXCLUIR REMOVIDO DAQUI */}
-
          <div className="w-full md:flex-1"></div>
          
+         {/* FILTRO CORRIGIDO */}
          <div className="w-full md:w-auto flex items-center bg-gray-100 rounded px-2 py-1 border border-gray-200 mt-2 md:mt-0">
              <Filter size={16} className="text-gray-400 mr-2"/>
              <span className="text-xs text-gray-500 mr-2 whitespace-nowrap">Filtro:</span>
-             <select className="bg-transparent text-sm outline-none text-gray-700 font-medium cursor-pointer flex-1 md:flex-none w-full">
-                 <option>Todos</option>
-                 <option>Em Estoque</option>
-                 <option>Vendidos</option>
+             <select 
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="bg-transparent text-sm outline-none text-gray-700 font-medium cursor-pointer flex-1 md:flex-none w-full"
+             >
+                 <option value="Todos">Todos</option>
+                 <option value="Em Estoque">Em Estoque</option>
+                 <option value="Vendidos">Vendidos</option>
              </select>
          </div>
       </div>
@@ -177,7 +190,7 @@ const Estoque = () => {
                 {isLoading ? (
                    <tr><td colSpan="7" className="p-4 text-center">Carregando estoque...</td></tr>
                 ) : filteredVehicles.length === 0 ? (
-                   <tr><td colSpan="7" className="p-4 text-center text-gray-400">Nenhum veículo cadastrado.</td></tr>
+                   <tr><td colSpan="7" className="p-4 text-center text-gray-400">Nenhum veículo encontrado no filtro.</td></tr>
                 ) : (
                   filteredVehicles.map((car) => (
                     <tr key={car.id} onClick={() => { setSelectedCar(car); setActiveTab('detalhes'); }} className={`cursor-pointer transition-colors ${selectedCar?.id === car.id ? 'bg-blue-100 text-blue-900 font-medium' : 'hover:bg-blue-50 text-gray-700'}`}>
@@ -200,16 +213,16 @@ const Estoque = () => {
 
       {/* PAINEL INFERIOR DE DETALHES */}
       {selectedCar && (
-        <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-kadilac-300 animate-slide-up shadow-[0_-5px_20px_rgba(0,0,0,0.1)] mt-2 z-20 shrink-0">
+        <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-blue-500 animate-slide-up shadow-[0_-5px_20px_rgba(0,0,0,0.1)] mt-2 z-20 shrink-0">
           
           {/* ABAS DO PAINEL */}
           <div className="flex border-b bg-gray-50 overflow-x-auto">
             {['Detalhes', 'Despesas', 'Financeiro'].map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 whitespace-nowrap transition-colors ${activeTab === tab.toLowerCase() ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}>
+              <button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 whitespace-nowrap transition-colors ${activeTab === tab.toLowerCase() ? 'bg-white text-blue-700 border-t-2 border-t-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}>
                 {tab.charAt(0).toUpperCase() + tab.slice(1)} {tab === 'despesas' ? '/ Receitas' : ''}
               </button>
             ))}
-            <button onClick={() => setActiveTab('fotos')} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'fotos' ? 'bg-white text-kadilac-600 border-t-2 border-t-kadilac-600' : 'text-gray-500 hover:bg-gray-100'}`}>
+            <button onClick={() => setActiveTab('fotos')} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'fotos' ? 'bg-white text-blue-700 border-t-2 border-t-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}>
               <Camera size={14}/> Fotos
             </button>
             <button onClick={() => setActiveTab('documentos')} className={`px-6 py-3 text-sm font-bold border-r border-gray-200 flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === 'documentos' ? 'bg-white text-indigo-600 border-t-2 border-t-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}>
@@ -359,7 +372,6 @@ const Estoque = () => {
 
                         <div className="mt-4 pt-4 border-t border-gray-200">
                             <p className="text-xs font-bold text-gray-400 uppercase mb-1">Custo Total Acumulado</p>
-                            {/* CORREÇÃO: break-all para forçar quebra e leading-tight para altura de linha */}
                             <p className="text-xl sm:text-2xl font-black text-gray-800 break-all leading-tight">
                                 R$ {(Number(selectedCar.custo || 0) + financeiroData.totalDespesas).toLocaleString()}
                             </p>
@@ -406,7 +418,6 @@ const Estoque = () => {
                             <p className="text-xs font-bold text-gray-400 uppercase mb-1">
                                 {selectedCar.status === 'Vendido' ? 'Lucro Real Consolidado' : 'Projeção de Lucro'}
                             </p>
-                            {/* CORREÇÃO: break-all para forçar quebra */}
                             <p className={`text-xl sm:text-2xl font-black break-all leading-tight ${selectedCar.status === 'Vendido' ? 'text-green-600' : 'text-blue-600'}`}>
                                 R$ {(Number(selectedCar.valor || 0) + financeiroData.totalReceitas - (Number(selectedCar.custo || 0) + financeiroData.totalDespesas)).toLocaleString()}
                             </p>

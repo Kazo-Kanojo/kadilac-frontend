@@ -6,7 +6,8 @@ import Clientes from './components/clientes';
 import Financeiro from './components/Financeiro';
 import Configuracoes from './components/Configuracoes';
 import Login from './components/login';
-import SuperAdmin from './components/SuperAdmin'; // Importação do componente
+import SuperAdminConfig from './components/SuperAdminConfig'; // Importado aqui
+import SuperAdmin from './components/SuperAdmin'; 
 import { Menu } from 'lucide-react';
 import api from './api';
 
@@ -24,7 +25,15 @@ function App() {
   // Verifica autenticação ao carregar
   useEffect(() => {
     const token = localStorage.getItem('kadilac_token');
-    if (token) setIsAuthenticated(true);
+    const role = localStorage.getItem('kadilac_user_role'); // Pega o role
+    
+    if (token) {
+        setIsAuthenticated(true);
+        // Se for Super Admin, força a tela dele
+        if (role === 'super_admin') {
+            setActiveScreen('super-admin');
+        }
+    }
     setIsLoadingAuth(false);
   }, []);
 
@@ -61,6 +70,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('kadilac_token');
     localStorage.removeItem('kadilac_user');
+    localStorage.removeItem('kadilac_user_role');
     localStorage.removeItem('store_name');
     localStorage.removeItem('store_logo');
     setIsAuthenticated(false);
@@ -96,6 +106,7 @@ function App() {
            <h2 className="text-xl font-bold text-gray-700 capitalize mt-1">
              {activeScreen === 'nova-ficha' ? 'Nova Ficha' : 
               activeScreen === 'super-admin' ? 'Painel Admin' : 
+              activeScreen === 'super-admin-config' ? 'Configurações Admin' :
               activeScreen}
            </h2>
         </header>
@@ -109,8 +120,10 @@ function App() {
             {activeScreen === 'financeiro' && <Financeiro />} 
             {activeScreen === 'config' && <Configuracoes onUpdate={refreshStoreData} />}
             
-            {/* Rota do Super Admin */}
+            {/* Rotas do Super Admin */}
             {activeScreen === 'super-admin' && <SuperAdmin />}
+            {/* ADICIONADO AQUI: */}
+            {activeScreen === 'super-admin-config' && <SuperAdminConfig />}
           </div>
         </div>
       </main>

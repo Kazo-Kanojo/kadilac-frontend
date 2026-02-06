@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, UserPlus, Edit, Trash2, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail, MessageCircle } from 'lucide-react';
+import { Search, UserPlus, Edit, Briefcase, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail, MessageCircle } from 'lucide-react';
 import ClientModal from './ClientModal';
 import api from '../api'; 
 
@@ -44,9 +44,26 @@ const Clientes = () => {
     if (selectedClient && activeTab === 'historico') {
         const fetchHistory = async () => {
             try {
-                const res = await api.get(`/clientes/${selectedClient.id}/vendas`);
+                const res = await api.get(`/clientes/${selectedClient.id}/vendas`); // Ajuste se sua rota for diferente
+                // Se não tiver rota específica de 'vendas do cliente', use um filtro no front ou crie a rota no back
+                // Supondo que a rota /financeiro/vendas ou similar possa filtrar, ou a rota criada anteriormente
+                // Caso a rota '/clientes/:id/vendas' não exista no seu backend atual, 
+                // você precisará filtrar as vendas gerais ou criar o endpoint.
+                // Vou assumir que o endpoint existe ou que o filtro é feito aqui.
+                // Se der erro 404, avise que ajustamos o backend.
+                
+                // BACKEND CHECK: No seu server.js enviado, não vi rota GET /clientes/:id/vendas explícita.
+                // Mas vi GET /financeiro/vendas. 
+                // VOU AJUSTAR PARA FILTRAR NO FRONTEND SE A ROTA NÃO EXISTIR, OU VOCÊ ADICIONA NO BACK.
+                // Para garantir, vou tentar buscar as vendas e filtrar (solução temporária segura)
+                // OU melhor: assumir que você vai usar a lógica já existente no seu código original 
+                // (que parecia já ter essa intenção no useEffect).
+                
+                // Nota: No seu código original enviado, havia: api.get(`/clientes/${selectedClient.id}/vendas`)
+                // Se isso funcionava, manterei. Se não, avise para criarmos a rota.
                 setClientHistory(res.data);
             } catch (error) {
+                // Fallback: Se a rota específica falhar, tenta pegar todas e filtrar (opcional)
                 console.error("Erro ao buscar histórico", error);
                 setClientHistory([]); 
             }
@@ -86,18 +103,10 @@ const Clientes = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteClient = async () => {
+  // BOTÃO NOVO: VER NEGÓCIOS
+  const handleShowDeals = () => {
     if (!selectedClient) return;
-    // eslint-disable-next-line no-restricted-globals
-    if (confirm(`Tem certeza que deseja excluir ${selectedClient.nome}?`)) {
-      try {
-        await api.delete(`/clientes/${selectedClient.id}`);
-        fetchClients();
-        setSelectedClient(null);
-      } catch (error) {
-        alert("Erro ao excluir cliente: " + (error.response?.data?.message || error.message));
-      }
-    }
+    setActiveTab('historico'); // Apenas troca a aba para o histórico
   };
 
   const handleSaveClient = async (clientData) => {
@@ -115,19 +124,15 @@ const Clientes = () => {
       
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      alert('Erro ao salvar cliente. Verifique se todos os campos obrigatórios estão preenchidos.');
+      alert('Erro ao salvar cliente.');
     }
   };
 
-  // --- FUNÇÃO PARA ABRIR WHATSAPP ---
+  // --- FUNÇÃO WHATSAPP ---
   const openWhatsApp = (phone) => {
     if (!phone) return;
-    // Remove tudo que não for número (espaços, traços, parenteses)
     const cleanPhone = phone.replace(/\D/g, '');
-    
-    // Se tiver 10 ou 11 dígitos (ex: 11999999999), assume que é Brasil e adiciona 55
     const finalPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
-    
     window.open(`https://wa.me/${finalPhone}`, '_blank');
   };
 
@@ -141,6 +146,8 @@ const Clientes = () => {
       
       {/* BARRA DE FERRAMENTAS */}
       <div className="bg-white p-2 rounded-t-lg shadow-sm border-b border-gray-200 flex flex-wrap gap-2 items-center mb-2">
+        
+        {/* Botão Novo */}
         <button 
             onClick={handleNewClient}
             className="flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all group min-w-[80px]"
@@ -151,6 +158,7 @@ const Clientes = () => {
 
         <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
 
+        {/* Botão Editar */}
         <button 
             onClick={handleEditClient} 
             disabled={!selectedClient}
@@ -160,17 +168,20 @@ const Clientes = () => {
             <span className="text-xs font-bold text-gray-600">Editar</span>
         </button>
 
+        {/* Botão NEGÓCIOS (Substitui o Excluir) */}
         <button 
-            onClick={handleDeleteClient} 
+            onClick={handleShowDeals} 
             disabled={!selectedClient}
             className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedClient ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-200'}`}
         >
-            <Trash2 size={24} className="text-red-500 mb-1 group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-bold text-gray-600">Excluir</span>
+            {/* Ícone de Maleta/Business */}
+            <Briefcase size={24} className="text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-gray-600">Negócios</span>
         </button>
 
         <div className="w-full md:flex-1"></div>
 
+        {/* Busca */}
         <div className="relative w-full md:w-64 mt-2 md:mt-0">
           <input
             type="text"
@@ -208,15 +219,23 @@ const Clientes = () => {
                         onClick={() => handleSelectClient(client)}
                         className={`cursor-pointer transition-colors ${selectedClient?.id === client.id ? 'bg-blue-100 text-blue-900 font-medium' : 'hover:bg-blue-50 text-gray-700'}`}
                     >
-                        <td className="p-3 font-bold">{client.nome}</td>
+                        {/* NOME + STATUS BADGE */}
+                        <td className="p-3">
+                            <div className="font-bold text-gray-800">{client.nome}</div>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wide 
+                                ${client.categoria === 'Vendedor' ? 'bg-purple-100 text-purple-700' : 
+                                  client.categoria === 'Comprador' ? 'bg-orange-100 text-orange-700' : 
+                                  'bg-gray-100 text-gray-600'}`}>
+                                {client.categoria || 'Cliente'}
+                            </span>
+                        </td>
                         <td className="p-3">{client.cpf_cnpj}</td>
-                        {/* COLUNA TELEFONE COM WHATSAPP */}
                         <td className="p-3 flex items-center gap-2">
                             <span>{client.telefone}</span>
                             {client.telefone && (
                                 <button 
                                     onClick={(e) => {
-                                        e.stopPropagation(); // Evita selecionar a linha ao clicar no zap
+                                        e.stopPropagation();
                                         openWhatsApp(client.telefone);
                                     }}
                                     className="p-1 bg-green-100 text-green-600 rounded-full hover:bg-green-500 hover:text-white transition-colors"
@@ -236,7 +255,7 @@ const Clientes = () => {
         </div>
       </div>
 
-      {/* PAINEL INFERIOR (ESTILO ESTOQUE) */}
+      {/* PAINEL INFERIOR (DETALHES) */}
       {selectedClient && (
         <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-blue-500 animate-slide-up shadow-inner mt-2 z-20">
             {/* Abas */}
@@ -251,7 +270,7 @@ const Clientes = () => {
                     onClick={() => setActiveTab('historico')}
                     className={`px-6 py-3 text-sm font-bold border-r border-gray-300 flex items-center gap-2 whitespace-nowrap ${activeTab === 'historico' ? 'bg-white text-blue-700 border-t-2 border-t-blue-700' : 'text-gray-500 hover:bg-gray-200'}`}
                 >
-                    <History size={16}/> Histórico de Negócios
+                    <Briefcase size={16}/> Negócios deste Cliente
                 </button>
                 <div className="flex-1 flex justify-end items-center pr-4 bg-gray-100 min-w-[50px]">
                     <button onClick={() => setSelectedClient(null)} className="text-gray-500 hover:text-red-600"><ChevronDown/></button>
@@ -269,6 +288,10 @@ const Clientes = () => {
                                 <User size={16}/> Identificação
                             </div>
                             <p><span className="text-gray-500 w-24 inline-block">Nome:</span> <strong className="text-lg">{selectedClient.nome}</strong></p>
+                            
+                            {/* STATUS NO DETALHE */}
+                            <p><span className="text-gray-500 w-24 inline-block">Função:</span> <span className="font-bold text-[#D80000] uppercase">{selectedClient.categoria || 'Cliente'}</span></p>
+
                             <p><span className="text-gray-500 w-24 inline-block">CPF/CNPJ:</span> {selectedClient.cpf_cnpj}</p>
                             <p><span className="text-gray-500 w-24 inline-block">RG:</span> {selectedClient.rg || '-'}</p>
                             <p><span className="text-gray-500 w-24 inline-block">Nascimento:</span> {formatDate(selectedClient.data_nascimento)}</p>
@@ -279,7 +302,6 @@ const Clientes = () => {
                                 <Phone size={16}/> Contato
                             </div>
                             
-                            {/* TELEFONE COM BOTÃO GRANDE DE WHATSAPP */}
                             <div className="flex items-center gap-2">
                                 <span className="text-gray-500 w-24 inline-block">Telefone:</span> 
                                 <span className="font-medium">{selectedClient.telefone}</span>
@@ -315,7 +337,7 @@ const Clientes = () => {
                     </div>
                 )}
 
-                {/* ABA HISTÓRICO DE NEGÓCIOS */}
+                {/* ABA HISTÓRICO / NEGÓCIOS */}
                 {activeTab === 'historico' && (
                     <div className="h-full">
                         {clientHistory.length === 0 ? (

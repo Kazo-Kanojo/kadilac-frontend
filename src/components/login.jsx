@@ -1,88 +1,134 @@
 import React, { useState } from 'react';
+import { User, Lock, Loader2, AlertCircle } from 'lucide-react';
 import api from '../api';
-import { Car } from 'lucide-react';
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      const response = await api.post('/login', { username, password });
-      const { token, username: user, store_id } = response.data;
+      // 1. Envia os dados para o backend (note que usamos 'username')
+      const response = await api.post('/login', { 
+        username: username, 
+        password: password 
+      });
 
+      // 2. Extrai os dados da resposta
+      const { token, role, store_id, store_name, store_logo, username: userReturn } = response.data;
+
+      // 3. Salva tudo no localStorage para o sistema usar depois
       localStorage.setItem('kadilac_token', token);
-      localStorage.setItem('kadilac_user', JSON.stringify({ user, store_id }));
+      localStorage.setItem('kadilac_user', userReturn);
+      localStorage.setItem('kadilac_user_role', role); // Importante para o Super Admin
 
-      if (onLogin) onLogin();
+      // Lógica para salvar dados da loja (se não for admin sem loja)
+      if (store_id) {
+          if (store_name) localStorage.setItem('store_name', store_name);
+          if (store_logo) localStorage.setItem('store_logo', store_logo);
+      } else {
+          // Limpa dados de loja se for Super Admin "global"
+          localStorage.removeItem('store_name');
+          localStorage.removeItem('store_logo');
+      }
+
+      // 4. Avisa o App.jsx que o login deu certo
+      onLogin(); 
 
     } catch (err) {
-      console.error(err);
-      setError('Usuário ou senha incorretos.');
+      console.error("Erro no login:", err);
+      // Pega a mensagem de erro exata do backend (ex: "Senha incorreta")
+      const msg = err.response?.data?.error || 'Erro ao conectar ao servidor.';
+      setError(msg);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
-      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-96 border border-gray-700">
-        <div className="text-center mb-8 flex flex-col items-center">
-          <div className="bg-red-600 p-3 rounded-full mb-4 shadow-lg">
-             <Car size={32} className="text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-200">
+        
+        {/* Cabeçalho do Login */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-[#D80000] rounded-xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 shadow-lg">
+            K
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-wide uppercase">Portal do Lojista</h1>
-          <p className="text-gray-400 text-sm mt-2">Sistema de Gestão Automotiva</p>
+          <h1 className="text-2xl font-bold text-gray-800">Acesso ao Sistema</h1>
+          <p className="text-gray-500 text-sm mt-1">Gestão Kadilac Veículos</p>
         </div>
 
+        {/* Mensagem de Erro */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm p-3 rounded mb-4 text-center">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center gap-2 animate-pulse">
+            <AlertCircle size={16} />
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* Campo Usuário */}
           <div>
-            <label className="block text-gray-400 text-xs font-bold mb-2 uppercase tracking-wide">Usuário</label>
-            <input
-              type="text"
-              className="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all"
-              placeholder="Digite seu usuário..."
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <User className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D80000] focus:border-[#D80000] transition-colors outline-none"
+                placeholder="Seu usuário de acesso"
+              />
+            </div>
           </div>
 
+          {/* Campo Senha */}
           <div>
-            <label className="block text-gray-400 text-xs font-bold mb-2 uppercase tracking-wide">Senha</label>
-            <input
-              type="password"
-              className="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all"
-              placeholder="••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D80000] focus:border-[#D80000] transition-colors outline-none"
+                placeholder="Sua senha secreta"
+              />
+            </div>
           </div>
 
+          {/* Botão Entrar */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-lg transition-all duration-200 disabled:opacity-50 shadow-lg transform hover:scale-[1.02]"
+            disabled={isLoading}
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-[#D80000] hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? 'Validando Acesso...' : 'Entrar no Sistema'}
+            {isLoading ? (
+              <>
+                <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                Validando...
+              </>
+            ) : (
+              'Entrar no Sistema'
+            )}
           </button>
         </form>
         
-        <div className="mt-8 text-center text-xs text-gray-600">
-            &copy; {new Date().getFullYear()} Sistema de Gestão v1.0
+        <div className="mt-6 text-center text-xs text-gray-400">
+            &copy; {new Date().getFullYear()} Kadilac System. Todos os direitos reservados.
         </div>
       </div>
     </div>
