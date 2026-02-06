@@ -64,6 +64,17 @@ function App() {
   }, [isAuthenticated]);
 
   const handleLoginSuccess = () => {
+    // 1. Pega o cargo que acabou de ser salvo no login
+    const role = localStorage.getItem('kadilac_user_role');
+
+    // 2. Decide qual tela abrir
+    if (role === 'super_admin') {
+        setActiveScreen('super-admin');
+    } else {
+        setActiveScreen('dashboard');
+    }
+
+    // 3. Libera o acesso
     setIsAuthenticated(true);
   };
 
