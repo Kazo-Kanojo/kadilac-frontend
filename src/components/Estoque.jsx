@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
-import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight } from 'lucide-react';
+// ADICIONADO: Trash2 na importação abaixo
+import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight, Trash2 } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
@@ -18,7 +19,7 @@ const Estoque = () => {
   const [selectedCar, setSelectedCar] = useState(null);
   const [activeTab, setActiveTab] = useState('detalhes');
   const [isLoading, setIsLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('Todos'); // <--- NOVO ESTADO DO FILTRO
+  const [filterStatus, setFilterStatus] = useState('Todos');
   
   // Estados dos Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,7 +42,6 @@ const Estoque = () => {
       ]);
 
       setVehicles(vehiclesRes.data);
-      // Não setamos filteredVehicles diretamente aqui mais, o useEffect do filtro fará isso
       setClients(clientsRes.data);
       setStoreConfig(configRes.data);
       
@@ -56,7 +56,7 @@ const Estoque = () => {
     fetchData();
   }, []);
 
-  // --- LÓGICA DO FILTRO (NOVO) ---
+  // --- LÓGICA DO FILTRO ---
   useEffect(() => {
     if (filterStatus === 'Todos') {
       setFilteredVehicles(vehicles);
@@ -155,7 +155,7 @@ const Estoque = () => {
          
          <div className="w-full md:flex-1"></div>
          
-         {/* FILTRO CORRIGIDO */}
+         {/* FILTRO */}
          <div className="w-full md:w-auto flex items-center bg-gray-100 rounded px-2 py-1 border border-gray-200 mt-2 md:mt-0">
              <Filter size={16} className="text-gray-400 mr-2"/>
              <span className="text-xs text-gray-500 mr-2 whitespace-nowrap">Filtro:</span>
@@ -236,7 +236,7 @@ const Estoque = () => {
           {/* CONTEÚDO DO PAINEL */}
           <div className="p-4 overflow-auto flex-1 bg-white max-h-[40vh] md:max-h-none">
             
-            {/* 1. DETALHES (Resumo Geral) */}
+            {/* 1. DETALHES */}
             {activeTab === 'detalhes' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm animate-fade-in h-full">
                   <div className="space-y-2">
@@ -280,7 +280,7 @@ const Estoque = () => {
               </div>
             )}
 
-            {/* 2. DESPESAS (Lista Técnica) */}
+            {/* 2. DESPESAS (COM A CORREÇÃO DO TRASH2) */}
             {activeTab === 'despesas' && (
                 <div className="animate-fade-in h-full flex flex-col gap-4">
                     <div className="flex justify-between items-center border-b pb-2">
@@ -336,11 +336,11 @@ const Estoque = () => {
                 </div>
             )}
 
-            {/* 3. FINANCEIRO (Correção de Exibição de Números) */}
+            {/* 3. FINANCEIRO */}
             {activeTab === 'financeiro' && (
                 <div className="animate-fade-in h-full flex flex-col lg:flex-row gap-4 p-4 overflow-y-auto custom-scrollbar">
                     
-                    {/* COLUNA ESQUERDA: ENTRADA / CUSTOS */}
+                    {/* COLUNA ESQUERDA: ENTRADA */}
                     <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[220px]">
                         <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
                         
@@ -360,7 +360,6 @@ const Estoque = () => {
                                     <span className="font-bold text-red-600 text-sm sm:text-base">R$ {financeiroData.totalDespesas.toLocaleString()}</span>
                                 </div>
 
-                                {/* Info de Troca na Entrada */}
                                 {selectedCar.operacao === 'Troca' && (
                                     <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-100 text-xs">
                                         <p className="text-blue-700 font-bold mb-1">Origem: Troca</p>
@@ -378,13 +377,12 @@ const Estoque = () => {
                         </div>
                     </div>
 
-                    {/* ÍCONE CENTRAL */}
                     <div className="flex items-center justify-center text-gray-300 shrink-0 py-2 lg:py-0">
                         <ChevronDown size={24} className="lg:hidden"/> 
                         <ArrowRight size={32} className="hidden lg:block"/>
                     </div>
 
-                    {/* COLUNA DIREITA: SAÍDA / RETORNO */}
+                    {/* COLUNA DIREITA: SAÍDA */}
                     <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[220px]">
                         <div className={`absolute top-0 left-0 w-1.5 h-full ${selectedCar.status === 'Vendido' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
                         
@@ -404,7 +402,6 @@ const Estoque = () => {
                                     <span className="font-bold text-green-600 text-sm sm:text-base">R$ {financeiroData.totalReceitas.toLocaleString()}</span>
                                 </div>
 
-                                {/* Info de Troca na Saída */}
                                 {selectedCar.operacao_saida === 'Troca' && (
                                     <div className="bg-orange-50 p-2 sm:p-3 rounded-lg border border-orange-100 text-xs">
                                         <p className="text-orange-700 font-bold mb-1">Saída com Troca</p>
