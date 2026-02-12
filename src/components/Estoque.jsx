@@ -26,6 +26,7 @@ const Estoque = () => {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [selectedVehicleDocs, setSelectedVehicleDocs] = useState(null);
   const [selectedVehicleForExpenses, setSelectedVehicleForExpenses] = useState(null);
+  const [tradeInInfo, setTradeInData] = useState(null);
   
   // Estado financeiro
   const [financeiroData, setFinanceiroData] = useState({ despesas: [], totalDespesas: 0, totalReceitas: 0 });
@@ -105,6 +106,28 @@ const Estoque = () => {
   };
 
   // --- AÇÕES ---
+  // --- ALTERAÇÃO AQUI: LÓGICA DE SUCESSO DO VEÍCULO ---
+  const handleVehicleSuccess = (savedData) => {
+    fetchData(); // Atualiza a lista
+    setIsModalOpen(false); // Fecha o modal de cadastro
+
+    // SE FOR UMA TROCA, INICIA O FLUXO INTELIGENTE
+    if (savedData && savedData.isTradeIn && savedData.tradeInTargetId) {
+        const targetCar = vehicles.find(v => v.id === parseInt(savedData.tradeInTargetId));
+
+        if (targetCar) {
+            // 2. Define ele como o carro selecionado
+            setSelectedCar(targetCar);
+            setTradeInData({
+                model: savedData.modelo,
+                value: Number(savedData.preco_compra || savedData.tradeInValue || 0) // Valor que entrou
+            });
+            setTimeout(() => {
+                setIsCloseModalOpen(true);
+            }, 300);
+        }
+    }
+  };
   const handleNewCar = () => { setSelectedCar(null); setIsModalOpen(true); };
   const handleEditCar = () => { if (!selectedCar) return alert("Selecione um veículo."); setIsModalOpen(true); };
   const handleCloseFicha = () => { if (!selectedCar) return alert("Selecione um veículo."); if (selectedCar.status === 'Vendido') return alert("Já vendido."); setIsCloseModalOpen(true); };
@@ -473,16 +496,20 @@ const Estoque = () => {
             clients={clients} 
             vehiclesList={vehicles}
             onClose={() => setIsModalOpen(false)} 
-            onSuccess={() => { fetchData(); setIsModalOpen(false); }}
+            onSuccess={handleVehicleSuccess} // <--- Função Atualizada
         />
       )}
 
       <CloseFileModal 
         isOpen={isCloseModalOpen}
-        onClose={() => setIsCloseModalOpen(false)}
+        onClose={() => {
+            setIsCloseModalOpen(false);
+            setTradeInData(null); // Limpa a troca ao fechar
+        }}
         onConfirm={confirmCloseFicha}
         vehicle={selectedCar}
         clientsList={clients}
+        tradeInInfo={tradeInInfo} // <--- Passando a nova Prop
       />
 
       {selectedVehicleDocs && (

@@ -222,15 +222,20 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
           // Envia opcionais
           opcionais: selectedOptions 
       };
-
-      if (vehicle?.id) {
-        await api.put(`/veiculos/${vehicle.id}`, payload);
-        alert("Veículo atualizado com sucesso!");
-      } else {
-        await api.post('/veiculos', payload);
-        alert("Veículo cadastrado com sucesso!");
-      }
-      onSuccess();
+        let response;
+        if (vehicle?.id) {
+            response = await api.put(`/veiculos/${vehicle.id}`, payload);
+            alert("Veículo atualizado com sucesso!");
+        } else {
+            response = await api.post('/veiculos', payload);
+            alert("Veículo cadastrado com sucesso!");
+        }
+      onSuccess({
+            ...response.data, // Dados do carro novo (Entrada)
+            isTradeIn: formData.operacao === 'Troca',
+            tradeInTargetId: formData.veiculo_troca_id, // ID do carro que vai sair
+            tradeInValue: parseFloat(formData.custo) // O custo do novo é o valor de entrada na venda do velho
+        });
       onClose();
     } catch (error) {
       console.error(error);
