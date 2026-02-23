@@ -14,6 +14,7 @@ const CloseFileModal = ({ isOpen, onClose, onConfirm, vehicle, clientsList = [],
   });
 
   // Efeito para configurar valores automáticos e TROCA
+  // Efeito para configurar valores automáticos e TROCA
   useEffect(() => {
     if (vehicle && isOpen) {
         // Reseta ou define valores iniciais
@@ -21,12 +22,26 @@ const CloseFileModal = ({ isOpen, onClose, onConfirm, vehicle, clientsList = [],
         let initialEntrada = '';
         let initialObs = '';
         let initialMetodo = 'Pix';
+        let isTroca = false;
+        let trocaDesc = '';
 
-        // LÓGICA DA TROCA (Se veio do fluxo automático)
+        // 1. Tenta pegar a info do fluxo automático (cadastro imediato)
         if (tradeInInfo) {
-            initialEntrada = tradeInInfo.value; // O valor do carro que entrou é a entrada
-            initialObs = `Entrada via Troca: Veículo ${tradeInInfo.model} (R$ ${tradeInInfo.value.toLocaleString('pt-BR')})`;
-            initialMetodo = 'Troca'; // Sugere método troca
+            initialEntrada = tradeInInfo.value; 
+            trocaDesc = tradeInInfo.model || 'Veículo da Troca'; // <--- CORREÇÃO AQUI
+            isTroca = true;
+        }
+        // 2. Se não tem fluxo automático, verifica se o veículo já tem uma troca salva no BD (via backend novo que fizemos)
+        else if (vehicle.veiculo_troca) {
+            initialEntrada = vehicle.valor_troca || '';
+            trocaDesc = `${vehicle.veiculo_troca} - ${vehicle.placa_troca || 'Sem Placa'}`;
+            isTroca = true;
+        }
+
+        // Se encontrou dados de troca em qualquer um dos cenários:
+        if (isTroca) {
+            initialObs = `Entrada via Troca: Veículo ${trocaDesc} (R$ ${Number(initialEntrada).toLocaleString('pt-BR')})`;
+            initialMetodo = 'Troca'; 
         }
 
         setSaleData({
@@ -67,7 +82,7 @@ const CloseFileModal = ({ isOpen, onClose, onConfirm, vehicle, clientsList = [],
   if (!isOpen || !vehicle) return null;
 
   const isDevolucao = saleData.operacao === 'Devolução';
-  
+  const hasTrocaDetectada = tradeInInfo || vehicle?.veiculo_troca;
   // Cálculo do restante a pagar em tempo real
   const valorVendaNum = parseFloat(saleData.valor_venda) || 0;
   const entradaNum = parseFloat(saleData.entrada) || 0;
@@ -98,14 +113,14 @@ const CloseFileModal = ({ isOpen, onClose, onConfirm, vehicle, clientsList = [],
                 </div>
                 
                 {/* CARD DE AVISO DE TROCA NA LATERAL */}
-                {tradeInInfo && (
+                {hasTrocaDetectada && (
                     <div className="bg-blue-100 border border-blue-200 p-3 rounded-lg animate-pulse">
                         <p className="text-xs font-bold text-blue-700 uppercase flex items-center gap-1">
                             <ArrowRightLeft size={14}/> Troca Detectada
                         </p>
                         <p className="text-sm text-blue-900 mt-1">
-                            O veículo <strong>{tradeInInfo.model}</strong> entrou como pagamento de 
-                            <strong> R$ {Number(tradeInInfo.value).toLocaleString()}</strong>.
+                            O veículo <strong>{tradeInInfo ? tradeInInfo.model : vehicle.veiculo_troca}</strong> entrou como pagamento de 
+                            <strong> R$ {Number(tradeInInfo ? tradeInInfo.value : vehicle.valor_troca).toLocaleString()}</strong>.
                         </p>
                     </div>
                 )}
@@ -162,7 +177,7 @@ const CloseFileModal = ({ isOpen, onClose, onConfirm, vehicle, clientsList = [],
                     <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase flex justify-between">
                             <span>Entrada / Troca</span>
-                            {tradeInInfo && <span className="text-blue-600 text-[10px]">Preenchido via Troca</span>}
+                            {hasTrocaDetectada && <span className="text-blue-600 text-[10px]">Preenchido via Troca</span>}
                         </label>
                         <div className="relative">
                             <input 
@@ -171,10 +186,10 @@ const CloseFileModal = ({ isOpen, onClose, onConfirm, vehicle, clientsList = [],
                                 name="entrada" 
                                 value={saleData.entrada} 
                                 onChange={handleChange} 
-                                className={`w-full pl-9 p-2.5 border rounded-lg focus:ring-2 outline-none font-bold text-lg ${tradeInInfo ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300 text-gray-700'}`} 
+                                className={`w-full pl-9 p-2.5 border rounded-lg focus:ring-2 outline-none font-bold text-lg ${hasTrocaDetectada ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300 text-gray-700'}`}
                                 placeholder="0,00"
                             />
-                            <ArrowRightLeft className={`absolute left-2.5 top-3 ${tradeInInfo ? 'text-blue-500' : 'text-gray-400'}`} size={18}/>
+                            <ArrowRightLeft className={`absolute left-2.5 top-3 ${hasTrocaDetectada ? 'text-blue-500' : 'text-gray-400'}`} size={18}/>
                         </div>
                     </div>
                 </div>

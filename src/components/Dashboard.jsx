@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from 'react';
-import { Car, DollarSign, Users, ShoppingBag, TrendingUp, ArrowRight } from 'lucide-react';
+import { Car, DollarSign, Users, ShoppingBag, TrendingUp, ArrowRight,Search } from 'lucide-react';
+import ConsultaFipeModal from './ConsultaFipeModal';
 // ALTERAÇÃO 1: Importar 'api' (o axios configurado) em vez de apenas a URL
 import api from '../api'; 
 
@@ -12,6 +13,8 @@ const Dashboard = ({ setActiveScreen }) => {
     recentes: []
   });
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [isFipeOpen, setIsFipeOpen] = useState(false);
 
   // Buscar dados do Backend
   useEffect(() => {
@@ -150,6 +153,13 @@ const Dashboard = ({ setActiveScreen }) => {
               
               <div className="space-y-3">
                 <button 
+                  onClick={() => setIsFipeOpen(true)}
+                  className="w-full bg-red-800 text-white py-3 px-4 rounded-lg font-bold text-sm hover:bg-red-900 transition-colors flex items-center justify-between border border-red-700 shadow-sm"
+                >
+                  Consultar Tabela FIPE
+                  <Search size={16}/>
+                </button>
+                <button 
                   onClick={() => setActiveScreen ? setActiveScreen('estoque') : window.location.href = '/'}
                   className="w-full bg-red-800 text-white py-3 px-4 rounded-lg font-bold text-sm hover:bg-red-900 transition-colors flex items-center justify-between border border-red-700 shadow-sm"
                 >
@@ -172,8 +182,8 @@ const Dashboard = ({ setActiveScreen }) => {
               <p className="text-sm font-bold mt-1">(11) 9999-9999</p>
             </div>
         </div>
-
       </div>
+      <ConsultaFipeModal isOpen={isFipeOpen} onClose={() => setIsFipeOpen(false)} />
     </div>
   );
 };

@@ -231,6 +231,7 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
             alert("Veículo cadastrado com sucesso!");
         }
       onSuccess({
+            ...payload,
             ...response.data, // Dados do carro novo (Entrada)
             isTradeIn: formData.operacao === 'Troca',
             tradeInTargetId: formData.veiculo_troca_id, // ID do carro que vai sair
@@ -285,6 +286,14 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Renavam</label>
                                 <input name="renavam" value={formData.renavam} onChange={handleChange} className="w-full p-2 border rounded" placeholder="00000000000" />
                             </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Chassi</label>
+                                <input name="chassi" value={formData.chassi} onChange={handleChange} className="w-full p-2 border rounded uppercase" placeholder="Chassi"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Certificado</label>
+                                <input name="certificado" value={formData.certificado} onChange={handleChange} className="w-full p-2 border rounded" placeholder="Nº CRV/CRLV" />
+                            </div>
                         </div>
                     </div>
 
@@ -320,8 +329,8 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 bg-green-50 p-3 rounded-lg border border-green-100">
-                            <div><label className="block text-xs font-bold text-green-700 mb-1">Preço Custo</label><input name="custo" type="number" value={formData.custo} onChange={handleChange} className="w-full p-2 border rounded border-green-200" placeholder="0.00" /></div>
-                            <div><label className="block text-xs font-bold text-green-700 mb-1">Preço Venda</label><input name="valor" type="number" value={formData.valor} onChange={handleChange} className="w-full p-2 border rounded border-green-200 font-bold" placeholder="0.00" /></div>
+                            <div><label className="block text-xs font-bold text-green-700 mb-1">Valor entrada</label><input name="custo" type="number" value={formData.custo} onChange={handleChange} className="w-full p-2 border rounded border-green-200" placeholder="0.00" /></div>
+                            <div><label className="block text-xs font-bold text-green-700 mb-1">Previsão de venda</label><input name="valor" type="number" value={formData.valor} onChange={handleChange} className="w-full p-2 border rounded border-green-200 font-bold" placeholder="0.00" /></div>
                         </div>
                     </div>
 

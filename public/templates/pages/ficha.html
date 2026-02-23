@@ -40,8 +40,8 @@
                 <div class="parte-bloco">
                     <h3>ORIGEM / PROPRIETÁRIO ANT.</h3>
                     <div class="field full"><label>Nome:</label><span>{{ANTIGO_NOME}}</span></div>
-                    <div class="field full"><label>Tel:</label><span>-</span></div>
-                    <div class="field full"><label>Cidade:</label><span>-</span></div>
+                    <div class="field full"><label>Tel:</label><span>{{ANTIGO_TEL}}</span></div>
+                    <div class="field full"><label>Cidade:</label><span>{{ANTIGO_CIDADE}}</span></div>
                 </div>
 
                 <div class="parte-bloco">
@@ -54,9 +54,9 @@
 
                 <div class="parte-bloco">
                     <h3>VEÍCULO NA TROCA</h3>
-                    <div class="field full"><label>Veículo:</label><span>-</span></div>
-                    <div class="field full"><label>Placa:</label><span>-</span></div>
-                    <div class="field full"><label>Valor:</label><span>-</span></div>
+                    <div class="field full"><label>Veículo:</label><span>{{TROCA_VEICULO}}</span></div>
+                    <div class="field full"><label>Placa:</label><span>{{TROCA_PLACA}}</span></div>
+                    <div class="field full"><label>Valor:</label><span>{{TROCA_VALOR}}</span></div>
                 </div>
             </div>
 
@@ -156,20 +156,35 @@
                 '{{DATA_SAIDA}}': data.vehicle.status === 'Vendido' ? fDate(data.vehicle.data_venda) : 'Em Estoque',
                 '{{DATA_ATUAL}}': new Date().toLocaleDateString('pt-BR'),
 
-                '{{VEICULO_MODELO}}': data.vehicle.modelo,
-                '{{VEICULO_PLACA}}': data.vehicle.placa,
-                '{{VEICULO_ANO}}': data.vehicle.ano,
-                '{{VEICULO_COR}}': data.vehicle.cor,
-                '{{VEICULO_COMBUSTIVEL}}': data.vehicle.combustivel,
+                // Adicionado a marca junto ao modelo
+                '{{VEICULO_MODELO}}': `${data.vehicle.marca || ''} ${data.vehicle.modelo || ''}`.trim(),
+                '{{VEICULO_PLACA}}': data.vehicle.placa || '-',
+                '{{VEICULO_ANO}}': data.vehicle.ano || '-',
+                '{{VEICULO_COR}}': data.vehicle.cor || '-',
+                '{{VEICULO_COMBUSTIVEL}}': data.vehicle.combustivel || '-',
                 '{{VEICULO_RENAVAM}}': data.vehicle.renavam || '-',
                 '{{VEICULO_CHASSI}}': data.vehicle.chassi || '-',
 
+                // Proprietário Anterior (Origem)
                 '{{ANTIGO_NOME}}': data.vehicle.proprietario_anterior || 'Não informado',
+                '{{ANTIGO_TEL}}': data.prevOwner?.telefone || '-',
+                '{{ANTIGO_CIDADE}}': data.prevOwner?.cidade || '-',
                 
-                '{{CLIENTE_NOME}}': data.client?.nome || '-',
-                '{{CLIENTE_CPF}}': data.client?.cpf_cnpj || '-',
-                '{{CLIENTE_TEL}}': data.client?.telefone || '-',
-                '{{CLIENTE_ENDERECO}}': data.client?.endereco || '-',
+                // Validação: Só exibe os dados do cliente se o veículo já estiver vendido
+                // Validação: Só exibe os dados do cliente se o veículo já estiver vendido
+                '{{CLIENTE_NOME}}': data.vehicle.status === 'Vendido' ? (data.client?.nome || data.vehicle.cliente_nome || '-') : '-',
+                '{{CLIENTE_CPF}}': data.vehicle.status === 'Vendido' ? (data.client?.cpf_cnpj || '-') : '-',
+                '{{CLIENTE_TEL}}': data.vehicle.status === 'Vendido' ? (data.client?.telefone || '-') : '-',
+
+                // Dados do veículo na troca
+                '{{TROCA_VEICULO}}': data.vehicle.veiculo_troca || '-',
+                '{{TROCA_PLACA}}': data.vehicle.placa_troca || '-',
+                '{{TROCA_VALOR}}': data.vehicle.valor_troca ? fMoney(data.vehicle.valor_troca) : '-',
+                // Endereço completo formatado (Rua, Número - Bairro - Cidade)
+                '{{CLIENTE_ENDERECO}}': data.vehicle.status === 'Vendido' && data.client?.endereco 
+                                        ? `${data.client.endereco}${data.client.numero ? ', ' + data.client.numero : ''}${data.client.bairro ? ' - ' + data.client.bairro : ''}${data.client.cidade ? ' - ' + data.client.cidade : ''}` 
+                                        : '-',
+                    
 
                 // Financeiro
                 '{{VALOR_COMPRA}}': fMoney(precoCompra),

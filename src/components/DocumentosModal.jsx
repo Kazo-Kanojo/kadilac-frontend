@@ -65,15 +65,19 @@ const DocumentosModal = ({ vehicle, onClose, storeConfig, clients }) => {
     const clientData = clients?.find(c => c.nome?.trim().toLowerCase() === targetClientName?.trim().toLowerCase()) 
                        || { nome: targetClientName || 'Cliente não identificado' };
 
+    // NOVA LINHA: Busca os dados completos do proprietário anterior na lista de clientes
+    const prevOwnerData = clients?.find(c => c.nome?.trim().toLowerCase() === vehicle.proprietario_anterior?.trim().toLowerCase()) || {};
+
     // Monta o objeto para o localStorage (que o HTML vai ler)
     const printData = {
         store: storeConfig,
         client: clientData,
+        prevOwner: prevOwnerData, 
         vehicle: {
             ...vehicle,
             marca: vehicle.marca || ''
         },
-        expenses: expensesList, // Passa as despesas para o HTML
+        expenses: expensesList,
         sale: {
             price: price,
             seller: storeConfig.nome_loja,

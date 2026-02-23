@@ -104,7 +104,113 @@ const Financeiro = () => {
       if(!dateString) return '-';
       return new Date(dateString).toLocaleDateString('pt-BR');
   };
+const handlePrintReport = () => {
+    // Calcula os totais apenas do que está filtrado na tela
+    const filteredEntradas = filteredTransactions.filter(t => t.tipo === 'entrada').reduce((sum, t) => sum + t.valor, 0);
+    const filteredSaidas = filteredTransactions.filter(t => t.tipo === 'saida').reduce((sum, t) => sum + t.valor, 0);
+    const filteredTotal = filteredEntradas - filteredSaidas;
 
+    // Abre uma nova janela para o relatório
+    const printWindow = window.open('', '_blank');
+    
+    const htmlContent = `
+                          <!DOCTYPE html>
+                          <html lang="pt-BR">
+                          <head>
+                            <meta charset="UTF-8">
+                            <title>Relatório Financeiro</title>
+                            <style>
+                              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; }
+                              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+                              .header h1 { color: #166534; margin: 0 0 10px 0; font-size: 24px; text-transform: uppercase; }
+                              .header p { margin: 0; color: #666; font-size: 14px; }
+                              
+                              .summary-box { display: flex; justify-content: space-between; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
+                              .summary-item { text-align: center; flex: 1; }
+                              .summary-item:not(:last-child) { border-right: 1px solid #e2e8f0; }
+                              .summary-item span { display: block; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+                              .summary-item strong { font-size: 20px; }
+                              
+                              .text-green { color: #16a34a; }
+                              .text-red { color: #dc2626; }
+                              .text-blue { color: #2563eb; }
+                              
+                              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 30px; }
+                              th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+                              th { background-color: #f1f5f9; color: #475569; font-weight: bold; text-transform: uppercase; font-size: 11px; }
+                              tr:nth-child(even) { background-color: #f8fafc; }
+                              .text-right { text-align: right; }
+                              .tag { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; background: #e2e8f0; }
+                              
+                              @media print {
+                                body { padding: 0; }
+                                @page { margin: 1.5cm; }
+                              }
+                            </style>
+                          </head>
+                          <body>
+                            <div class="header">
+                              <h1>Relatório Financeiro</h1>
+                              <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+                              ${dateFilter ? `<p><strong>Filtro de Data:</strong> ${dateFilter.split('-').reverse().join('/')}</p>` : ''}
+                              ${searchTerm ? `<p><strong>Termo buscado:</strong> "${searchTerm}"</p>` : ''}
+                            </div>
+
+                            <div class="summary-box">
+                              <div class="summary-item">
+                                <span>Total Receitas</span>
+                                <strong class="text-green">${fMoney(filteredEntradas)}</strong>
+                              </div>
+                              <div class="summary-item">
+                                <span>Total Despesas</span>
+                                <strong class="text-red">${fMoney(filteredSaidas)}</strong>
+                              </div>
+                              <div class="summary-item">
+                                <span>Saldo do Período</span>
+                                <strong class="${filteredTotal >= 0 ? 'text-blue' : 'text-red'}">${fMoney(filteredTotal)}</strong>
+                              </div>
+                            </div>
+
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th>Data</th>
+                                  <th>Descrição do Lançamento</th>
+                                  <th>Categoria</th>
+                                  <th class="text-right">Valor</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                ${filteredTransactions.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding: 20px;">Nenhum registro encontrado para este filtro.</td></tr>' : ''}
+                                ${filteredTransactions.map(t => `
+                                  <tr>
+                                    <td>${fDate(t.data)}</td>
+                                    <td>${t.descricao}</td>
+                                    <td><span class="tag">${t.origem}</span></td>
+                                    <td class="text-right ${t.tipo === 'entrada' ? 'text-green' : 'text-red'} font-bold">
+                                      ${t.tipo === 'entrada' ? '+' : '-'} ${fMoney(t.valor)}
+                                    </td>
+                                  </tr>
+                                `).join('')}
+                              </tbody>
+                            </table>
+                            
+                            <script>
+                              window.onload = function() { 
+                                setTimeout(() => { 
+                                  window.print(); 
+                                  window.close(); 
+                                }, 500); 
+                              }
+                            </script>
+                          </body>
+                          </html>
+                        `;
+                        
+                        printWindow.document.write(htmlContent);
+                        printWindow.document.close();
+                      };
+                      
   return (
     <div className="p-6 max-w-7xl mx-auto animate-fade-in">
       <h1 className="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -163,9 +269,9 @@ const Financeiro = () => {
                 <Calendar className="absolute left-3 top-2.5 text-gray-400" size={18}/>
             </div>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium">
-            <Printer size={18}/> Imprimir Relatório
-        </button>
+        <button onClick={handlePrintReport} className="flex items-center gap-2 text-gray-600 hover:text-indigo-600 font-bold transition-colors bg-gray-100 hover:bg-indigo-50 px-4 py-2 rounded-lg">
+          <Printer size={18}/> Imprimir Relatório
+      </button>
       </div>
 
       {/* TABELA (SEM BOTÃO DE EXCLUIR) */}

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
 // ADICIONADO: Trash2 na importação abaixo
-import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight, Trash2 } from 'lucide-react';
+import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight, Trash2, Search } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
@@ -20,6 +20,7 @@ const Estoque = () => {
   const [activeTab, setActiveTab] = useState('detalhes');
   const [isLoading, setIsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('Todos');
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Estados dos Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,14 +60,28 @@ const Estoque = () => {
 
   // --- LÓGICA DO FILTRO ---
   useEffect(() => {
-    if (filterStatus === 'Todos') {
-      setFilteredVehicles(vehicles);
-    } else if (filterStatus === 'Em Estoque') {
-      setFilteredVehicles(vehicles.filter(v => v.status === 'Em estoque' || v.status === 'Disponível'));
+    let filtered = vehicles;
+
+    // 1. Filtrar por Status
+    if (filterStatus === 'Em Estoque') {
+      filtered = filtered.filter(v => v.status === 'Em estoque' || v.status === 'Disponível');
     } else if (filterStatus === 'Vendidos') {
-      setFilteredVehicles(vehicles.filter(v => v.status === 'Vendido'));
+      filtered = filtered.filter(v => v.status === 'Vendido');
     }
-  }, [filterStatus, vehicles]);
+
+    // 2. Filtrar por Termo de Busca (Placa, Modelo, Ano ou Cor)
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(v => 
+        (v.modelo && v.modelo.toLowerCase().includes(lowerTerm)) ||
+        (v.placa && v.placa.toLowerCase().includes(lowerTerm)) ||
+        (v.ano && String(v.ano).includes(lowerTerm)) ||
+        (v.cor && v.cor.toLowerCase().includes(lowerTerm))
+      );
+    }
+
+    setFilteredVehicles(filtered);
+  }, [filterStatus, searchTerm, vehicles]);
 
   // --- EFEITO PARA CARREGAR DADOS DAS ABAS ---
   useEffect(() => {
@@ -179,18 +194,35 @@ const Estoque = () => {
          <div className="w-full md:flex-1"></div>
          
          {/* FILTRO */}
-         <div className="w-full md:w-auto flex items-center bg-gray-100 rounded px-2 py-1 border border-gray-200 mt-2 md:mt-0">
-             <Filter size={16} className="text-gray-400 mr-2"/>
-             <span className="text-xs text-gray-500 mr-2 whitespace-nowrap">Filtro:</span>
-             <select 
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="bg-transparent text-sm outline-none text-gray-700 font-medium cursor-pointer flex-1 md:flex-none w-full"
-             >
-                 <option value="Todos">Todos</option>
-                 <option value="Em Estoque">Em Estoque</option>
-                 <option value="Vendidos">Vendidos</option>
-             </select>
+         {/* FILTROS E BUSCA */}
+         <div className="w-full md:w-auto flex flex-col md:flex-row gap-2 items-center mt-2 md:mt-0">
+             
+             {/* Busca de texto */}
+             <div className="relative w-full md:w-64">
+                <input
+                    type="text"
+                    placeholder="Buscar modelo, placa, ano..."
+                    className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Search className="absolute left-3 top-2 text-gray-400" size={16} />
+             </div>
+
+             {/* Filtro de Status */}
+             <div className="w-full md:w-auto flex items-center bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200">
+                 <Filter size={16} className="text-gray-400 mr-2"/>
+                 <span className="text-xs text-gray-500 mr-2 whitespace-nowrap">Status:</span>
+                 <select 
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="bg-transparent text-sm outline-none text-gray-700 font-bold cursor-pointer flex-1 md:flex-none w-full"
+                 >
+                     <option value="Todos">Todos</option>
+                     <option value="Em Estoque">Em Estoque</option>
+                     <option value="Vendidos">Vendidos</option>
+                 </select>
+             </div>
          </div>
       </div>
 
@@ -386,7 +418,7 @@ const Estoque = () => {
                                 {selectedCar.operacao === 'Troca' && (
                                     <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-100 text-xs">
                                         <p className="text-blue-700 font-bold mb-1">Origem: Troca</p>
-                                        <p className="text-gray-600">Ref: <span className="font-bold">{selectedCar.veiculo_troca_nome || 'Veículo anterior'}</span></p>
+                                        <p className="text-gray-600">Ref: <span className="font-bold">{selectedCar.veiculo_troca || 'Veículo anterior'}</span></p>
                                     </div>
                                 )}
                             </div>
