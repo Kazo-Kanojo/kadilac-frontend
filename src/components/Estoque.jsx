@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
 // ADICIONADO: Trash2 na importação abaixo
-import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight, Trash2, Search } from 'lucide-react';
+import { ChevronDown, Camera, FilePlus, Edit, LockKeyhole, Filter, Wrench, TrendingUp, FileText, Paperclip, Plus, ArrowRightLeft, ArrowRight, Trash2, Search, Share2 } from 'lucide-react';
 import VehicleModal from '../components/VehicleModal';
 import CloseFileModal from '../components/CloseFileModal';
 import DespesasModal from './DespesasModal';
@@ -158,7 +158,31 @@ const Estoque = () => {
         alert("Erro ao processar operação.");
      }
   };
+// --- EXPORTAR CATÁLOGO WHATSAPP ---
+  const handleExportCatalog = () => {
+    const availableCars = vehicles.filter(v => v.status === 'Em estoque' || v.status === 'Disponível');
 
+    if (availableCars.length === 0) {
+        return alert("Não existem veículos disponíveis no momento para gerar o catálogo.");
+    }
+
+    const nomeLoja = storeConfig?.nome || 'Nossa Loja';
+    let catalogText = `🚗 *Estoque Atualizado - ${nomeLoja}* 🚗\n\n`;
+
+    availableCars.forEach(car => {
+        const valorFormatado = Number(car.valor).toLocaleString('pt-BR');
+        catalogText += `🔹 *${car.modelo.toUpperCase()}* (${car.ano}) - R$ ${valorFormatado}\n`;
+    });
+
+    catalogText += `\n📲 *Interessado? Responda a esta mensagem para mais detalhes!*`;
+
+    navigator.clipboard.writeText(catalogText)
+        .then(() => alert("Catálogo copiado com sucesso! Agora é só colar no WhatsApp ou Instagram."))
+        .catch(err => {
+            console.error('Erro ao copiar', err);
+            alert("Não foi possível copiar automaticamente. Verifique as permissões do navegador.");
+        });
+  };
   return (
     <div className="flex flex-col h-full animate-fade-in relative bg-gray-50">
       
@@ -168,6 +192,12 @@ const Estoque = () => {
             <FilePlus size={24} className="text-blue-600 mb-1 group-hover:scale-110 transition-transform"/>
             <span className="text-xs font-bold text-gray-600">Nova</span>
          </button>
+         <button onClick={handleExportCatalog} className="flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] hover:bg-green-50 hover:border-green-200" title="Copiar Catálogo para WhatsApp">
+            <Share2 size={24} className="text-[#25D366] mb-1 group-hover:scale-110 transition-transform"/>
+            <span className="text-xs font-bold text-gray-600">Catálogo</span>
+         </button>
+
+         <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
          
          <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
          

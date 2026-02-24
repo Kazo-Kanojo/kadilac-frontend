@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Save, Upload, Plus, Search, Tag, User, Check, RefreshCw, Car, Briefcase } from 'lucide-react';
 import api from '../api';
 import ClientModal from './ClientModal';
+import ConsultaFipeModal from './ConsultaFipeModal'; // <-- IMPORTANDO O SEU MODAL FIPE
 
 // --- COMPONENTE DE BUSCA SIMPLES ---
 const SimpleSearch = ({ label, placeholder, value, onSelect, type, dataList }) => {
@@ -104,6 +105,8 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
   
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [clientModalTarget, setClientModalTarget] = useState(''); 
+  
+  const [isFipeModalOpen, setIsFipeModalOpen] = useState(false); // <-- NOVO: ESTADO DO MODAL FIPE
 
   const [isCreatingOption, setIsCreatingOption] = useState(false);
   const [newOptionCode, setNewOptionCode] = useState('');
@@ -125,7 +128,7 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
     proprietario: vehicle?.proprietario_anterior || '',
     vendedor_origem: vehicle?.vendedor_origem || '', 
     certificado: vehicle?.certificado || '',
-    operacao: vehicle?.operacao || 'Compra', // Default
+    operacao: vehicle?.operacao || 'Compra',
     veiculo_troca_id: vehicle?.veiculo_troca_id || '', 
     foto: vehicle?.foto || ''
   });
@@ -149,7 +152,7 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) return alert("Imagem muito grande (Max 5MB)");
+      if (file.size > 5 * 1024 * 1024) return alert("A imagem é demasiado grande (Max 5MB)");
       const reader = new FileReader();
       reader.onloadend = () => {
         setFotoPreview(reader.result);
@@ -170,7 +173,7 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
   };
 
   const handleSaveNewOption = async () => {
-    if(!newOptionName) return alert("Digite o nome do opcional");
+    if(!newOptionName) return alert("Insira o nome do opcional");
     const codeToSend = newOptionCode || newOptionName.substring(0, 3).toUpperCase();
     try {
         const res = await api.post('/options', { code: codeToSend, name: newOptionName });
@@ -193,9 +196,9 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
           const res = await api.post('/clientes', clientData);
           setFormData(prev => ({ ...prev, [clientModalTarget]: res.data.nome }));
           setIsClientModalOpen(false);
-          alert("Pessoa cadastrada!");
+          alert("Pessoa registada com sucesso!");
       } catch (error) {
-          alert("Erro ao cadastrar pessoa.");
+          alert("Erro ao registar a pessoa.");
       }
   };
 
@@ -204,22 +207,12 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
     setLoading(true);
 
     try {
-      // 1. Prepara o Payload (Limpeza de Dados)
       const payload = {
           ...formData,
-          // Garante que números sejam números (ou 0 se vazio)
           valor: parseFloat(formData.valor) || 0,
           custo: parseFloat(formData.custo) || 0,
-          
-          // Lógica da Troca: Se não for troca, zera o ID
-          veiculo_troca_id: formData.operacao === 'Troca' && formData.veiculo_troca_id 
-                            ? parseInt(formData.veiculo_troca_id) 
-                            : null,
-                            
-          // Garante datas corretas ou null
+          veiculo_troca_id: formData.operacao === 'Troca' && formData.veiculo_troca_id ? parseInt(formData.veiculo_troca_id) : null,
           dataEntrada: formData.dataEntrada || null,
-          
-          // Envia opcionais
           opcionais: selectedOptions 
       };
         let response;
@@ -228,23 +221,24 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
             alert("Veículo atualizado com sucesso!");
         } else {
             response = await api.post('/veiculos', payload);
-            alert("Veículo cadastrado com sucesso!");
+            alert("Veículo registado com sucesso!");
         }
       onSuccess({
             ...payload,
-            ...response.data, // Dados do carro novo (Entrada)
+            ...response.data, 
             isTradeIn: formData.operacao === 'Troca',
-            tradeInTargetId: formData.veiculo_troca_id, // ID do carro que vai sair
-            tradeInValue: parseFloat(formData.custo) // O custo do novo é o valor de entrada na venda do velho
+            tradeInTargetId: formData.veiculo_troca_id, 
+            tradeInValue: parseFloat(formData.custo) 
         });
       onClose();
     } catch (error) {
-      console.error(error);
-      alert("Erro ao salvar veículo: " + (error.response?.data?.error || error.message));
+        console.error(error);
+        alert("Erro ao guardar o veículo: " + (error.response?.data?.error || error.message));
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
+
   return (
     <>
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -279,20 +273,29 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Placa</label>
-                                <input name="placa" value={formData.placa} onChange={handleChange} className="w-full p-2 border rounded uppercase font-bold text-center" placeholder="ABC-1234" maxLength={8} />
+                                <label className="flex items-center gap-1 text-xs font-bold text-gray-500 mb-1">
+                                    Placa
+                                </label>
+                                <input 
+                                    name="placa" 
+                                    value={formData.placa} 
+                                    onChange={handleChange} 
+                                    className="w-full p-2 border rounded uppercase font-bold text-center focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                    placeholder="ABC-1234" 
+                                    maxLength={8} 
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Renavam</label>
-                                <input name="renavam" value={formData.renavam} onChange={handleChange} className="w-full p-2 border rounded" placeholder="00000000000" />
+                                <input name="renavam" value={formData.renavam} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="00000000000" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Chassi</label>
-                                <input name="chassi" value={formData.chassi} onChange={handleChange} className="w-full p-2 border rounded uppercase" placeholder="Chassi"/>
+                                <input name="chassi" value={formData.chassi} onChange={handleChange} className="w-full p-2 border rounded uppercase focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Chassi"/>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Certificado</label>
-                                <input name="certificado" value={formData.certificado} onChange={handleChange} className="w-full p-2 border rounded" placeholder="Nº CRV/CRLV" />
+                                <input name="certificado" value={formData.certificado} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Nº CRV/CRLV" />
                             </div>
                         </div>
                     </div>
@@ -301,26 +304,28 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                     <div className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Modelo / Versão</label>
-                            <input name="modelo" value={formData.modelo} onChange={handleChange} className="w-full p-2 border rounded font-medium" placeholder="Ex: Honda Civic LXL 1.8" required />
+                            <input name="modelo" value={formData.modelo} onChange={handleChange} className="w-full p-2 border rounded font-medium focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ex: Honda Civic LXL 1.8" required />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">Ano</label><input name="ano" value={formData.ano} onChange={handleChange} className="w-full p-2 border rounded" placeholder="2020/2021" /></div>
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">Cor</label><input name="cor" value={formData.cor} onChange={handleChange} className="w-full p-2 border rounded" placeholder="Prata" /></div>
+                            <div><label className="block text-xs font-bold text-gray-500 mb-1">Ano</label><input name="ano" value={formData.ano} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="2020/2021" /></div>
+                            <div><label className="block text-xs font-bold text-gray-500 mb-1">Cor</label><input name="cor" value={formData.cor} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Prata" /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Combustível</label>
-                                <select name="combustivel" value={formData.combustivel} onChange={handleChange} className="w-full p-2 border rounded bg-white">
+                                <select name="combustivel" value={formData.combustivel} onChange={handleChange} className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
                                     <option value="">Selecione</option>
                                     <option value="Flex">Flex</option>
                                     <option value="Gasolina">Gasolina</option>
                                     <option value="Etanol">Etanol</option>
                                     <option value="Diesel">Diesel</option>
+                                    <option value="Híbrido">Híbrido</option>
+                                    <option value="Elétrico">Elétrico</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Status</label>
-                                <select name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border rounded bg-white font-bold text-indigo-600">
+                                <select name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border rounded bg-white font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none">
                                     <option value="Disponível">Disponível</option>
                                     <option value="Reservado">Reservado</option>
                                     <option value="Vendido">Vendido</option>
@@ -328,9 +333,26 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                                 </select>
                             </div>
                         </div>
+
+                        {/* CAIXA DE VALORES E BOTÃO FIPE */}
                         <div className="grid grid-cols-2 gap-3 bg-green-50 p-3 rounded-lg border border-green-100">
-                            <div><label className="block text-xs font-bold text-green-700 mb-1">Valor entrada</label><input name="custo" type="number" value={formData.custo} onChange={handleChange} className="w-full p-2 border rounded border-green-200" placeholder="0.00" /></div>
-                            <div><label className="block text-xs font-bold text-green-700 mb-1">Previsão de venda</label><input name="valor" type="number" value={formData.valor} onChange={handleChange} className="w-full p-2 border rounded border-green-200 font-bold" placeholder="0.00" /></div>
+                            <div>
+                                <label className="block text-xs font-bold text-green-700 mb-1">Valor de Entrada</label>
+                                <input name="custo" type="number" value={formData.custo} onChange={handleChange} className="w-full p-2 border rounded border-green-200 focus:ring-2 focus:ring-green-500 outline-none" placeholder="0.00" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-green-700 mb-1">Previsão de Venda</label>
+                                <input name="valor" type="number" value={formData.valor} onChange={handleChange} className="w-full p-2 border rounded border-green-200 font-bold focus:ring-2 focus:ring-green-500 outline-none" placeholder="0.00" />
+                            </div>
+                            <div className="col-span-2 mt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsFipeModalOpen(true)} 
+                                    className="w-full bg-green-600 text-white py-2 rounded-lg font-bold text-xs hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-2"
+                                >
+                                    <Search size={14} /> Consultar Tabela FIPE
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -368,7 +390,7 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                             <div className="bg-blue-50 p-2 rounded border border-blue-200 animate-fadeIn">
                                 <SimpleSearch 
                                     label="Qual Veículo Saiu?" 
-                                    placeholder="Buscar carro da loja..." 
+                                    placeholder="Procurar carro da loja..." 
                                     type="vehicle"
                                     dataList={vehiclesList} 
                                     value={trocaDisplay}
@@ -385,17 +407,17 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                         
                         {/* Proprietário e Vendedor */}
                         <div className="flex items-end gap-2">
-                            <div className="flex-1"><SimpleSearch label="Proprietário Anterior" placeholder="Buscar pessoa..." type="client" dataList={clients} value={formData.proprietario} onSelect={(name) => setFormData(prev => ({...prev, proprietario: name}))}/></div>
+                            <div className="flex-1"><SimpleSearch label="Proprietário Anterior" placeholder="Procurar pessoa..." type="client" dataList={clients} value={formData.proprietario} onSelect={(name) => setFormData(prev => ({...prev, proprietario: name}))}/></div>
                             <button type="button" onClick={() => openNewClientModal('proprietario')} className="p-2 mb-[1px] rounded-lg border bg-white border-gray-300 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors h-[38px] w-[38px] flex items-center justify-center"><Plus size={18}/></button>
                         </div>
                         <div className="flex items-end gap-2">
-                            <div className="flex-1"><SimpleSearch label="Quem Vendeu" placeholder="Buscar vendedor..." type="client" dataList={clients} value={formData.vendedor_origem} onSelect={(name) => setFormData(prev => ({...prev, vendedor_origem: name}))}/></div>
+                            <div className="flex-1"><SimpleSearch label="Quem Vendeu" placeholder="Procurar vendedor..." type="client" dataList={clients} value={formData.vendedor_origem} onSelect={(name) => setFormData(prev => ({...prev, vendedor_origem: name}))}/></div>
                             <button type="button" onClick={() => openNewClientModal('vendedor_origem')} className="p-2 mb-[1px] rounded-lg border bg-white border-gray-300 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors h-[38px] w-[38px] flex items-center justify-center"><Plus size={18}/></button>
                         </div>
                         
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Data de Entrada</label>
-                            <input type="date" name="dataEntrada" value={formData.dataEntrada} onChange={handleChange} className="w-full p-2 border rounded text-sm" />
+                            <input type="date" name="dataEntrada" value={formData.dataEntrada} onChange={handleChange} className="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
                         </div>
                     </div>
                 </div>
@@ -411,14 +433,14 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
                             <div className="flex items-end gap-2">
                                 <div className="flex-1">
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Adicionar Opcional</label>
-                                    <SimpleSearch placeholder="Buscar existente..." type="option" dataList={[]} value="" onSelect={handleAddOption}/>
+                                    <SimpleSearch placeholder="Procurar existente..." type="option" dataList={[]} value="" onSelect={handleAddOption}/>
                                 </div>
                                 <button type="button" onClick={() => setIsCreatingOption(!isCreatingOption)} className={`p-2 rounded-lg border transition-colors h-[38px] w-[38px] flex items-center justify-center ${isCreatingOption ? 'bg-red-50 border-red-200 text-red-500' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`}><Plus size={18}/></button>
                             </div>
                             {isCreatingOption && (
                                 <div className="bg-white border border-indigo-100 p-3 rounded-lg shadow-sm animate-fade-in flex gap-2 items-end">
-                                    <div className="w-20"><label className="text-[10px] font-bold text-gray-400">Cód</label><input className="w-full p-1 border rounded text-xs uppercase" placeholder="BC" value={newOptionCode} onChange={e => setNewOptionCode(e.target.value.toUpperCase())} maxLength={4}/></div>
-                                    <div className="flex-1"><label className="text-[10px] font-bold text-gray-400">Nome</label><input className="w-full p-1 border rounded text-xs" placeholder="Banco Couro" value={newOptionName} onChange={e => setNewOptionName(e.target.value)}/></div>
+                                    <div className="w-20"><label className="text-[10px] font-bold text-gray-400">Cód</label><input className="w-full p-1 border rounded text-xs uppercase focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="BC" value={newOptionCode} onChange={e => setNewOptionCode(e.target.value.toUpperCase())} maxLength={4}/></div>
+                                    <div className="flex-1"><label className="text-[10px] font-bold text-gray-400">Nome</label><input className="w-full p-1 border rounded text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Banco Couro" value={newOptionName} onChange={e => setNewOptionName(e.target.value)}/></div>
                                     <button type="button" onClick={handleSaveNewOption} className="bg-green-500 text-white p-1.5 rounded hover:bg-green-600 transition-colors"><Check size={16}/></button>
                                 </div>
                             )}
@@ -438,14 +460,14 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
 
                 <div className="mt-6">
                     <label className="block text-xs font-bold text-gray-500 mb-1">Observações Gerais</label>
-                    <textarea name="observacoes" value={formData.observacoes} onChange={handleChange} rows="2" className="w-full p-3 border rounded-lg text-sm" placeholder="Detalhes extras sobre o estado do carro..."></textarea>
+                    <textarea name="observacoes" value={formData.observacoes} onChange={handleChange} rows="2" className="w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Detalhes extras sobre o estado do carro..."></textarea>
                 </div>
 
             </form>
 
             <div className="p-4 bg-gray-50 border-t flex justify-end gap-3">
                 <button onClick={onClose} className="px-6 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-lg transition-colors">Cancelar</button>
-                <button onClick={handleSubmit} disabled={loading} className="px-8 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2">{loading ? 'Salvando...' : <><Save size={18}/> Salvar Veículo</>}</button>
+                <button onClick={handleSubmit} disabled={loading} className="px-8 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2">{loading ? 'A guardar...' : <><Save size={18}/> Guardar Veículo</>}</button>
             </div>
         </div>
         </div>
@@ -456,6 +478,14 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
             onSave={handleClientSaved}
             initialData={null} 
         />
+
+        {/* --- MODAL FIPE --- */}
+        {isFipeModalOpen && (
+            <ConsultaFipeModal 
+                isOpen={isFipeModalOpen} 
+                onClose={() => setIsFipeModalOpen(false)} 
+            />
+        )}
     </>
   );
 };

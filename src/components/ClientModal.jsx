@@ -6,7 +6,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
   const initialFormState = {
     nome: '',
     tipo: 'PF', // PF ou PJ
-    categoria: 'Cliente', // <--- Novo Campo (Cliente, Vendedor, Comprador)
+    categoria: 'Cliente', // Cliente, Vendedor, Comprador
     cpf_cnpj: '',
     rg: '',
     data_nascimento: '',
@@ -23,6 +23,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
 
   const [formData, setFormData] = useState(initialFormState);
   const [loadingCep, setLoadingCep] = useState(false); // Loading do ViaCEP
+  const [loadingCnpj, setLoadingCnpj] = useState(false); // Loading do CNPJ
 
   useEffect(() => {
     if (initialData) {
@@ -43,7 +44,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // --- FUNÇÃO VIACEP ---
+  // --- AUTOMAÇÃO 1: BUSCA DE CEP (ViaCEP) ---
   const checkCEP = async (e) => {
     const cep = e.target.value.replace(/\D/g, ''); // Remove traços/pontos
 
@@ -70,6 +71,47 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
         console.error("Erro ao buscar CEP:", error);
       } finally {
         setLoadingCep(false);
+      }
+    }
+  };
+
+  // --- AUTOMAÇÃO 2: BUSCA DE DADOS POR CNPJ (Brasil API) ---
+  const checkCNPJ = async (e) => {
+    const cnpj = e.target.value.replace(/\D/g, ''); // Limpa a formatação
+    
+    // Só busca se for PJ e tiver 14 dígitos
+    if (formData.tipo === 'PJ' && cnpj.length === 14) {
+      setLoadingCnpj(true);
+      try {
+        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        const data = await response.json();
+
+        if (response.ok) {
+          setFormData(prev => ({
+            ...prev,
+            nome: data.razao_social || data.nome_fantasia || prev.nome,
+            cep: data.cep ? data.cep.replace(/(\d{5})(\d{3})/, "$1-$2") : prev.cep, // Formata o CEP
+            endereco: data.logradouro || prev.endereco,
+            numero: data.numero || prev.numero,
+            bairro: data.bairro || prev.bairro,
+            cidade: data.municipio || prev.cidade,
+            estado: data.uf || prev.estado,
+            telefone: data.ddd_telefone_1 || prev.telefone,
+            email: data.email || prev.email,
+          }));
+          
+          // Se não veio número da Receita, foca lá
+          if (!data.numero) {
+              document.getElementById('numeroInput')?.focus();
+          }
+        } else {
+          alert("CNPJ não encontrado na base da Receita!");
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CNPJ:", error);
+        alert("Erro ao consultar CNPJ. Verifique sua conexão.");
+      } finally {
+        setLoadingCnpj(false);
       }
     }
   };
@@ -126,7 +168,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
               </div>
             </div>
 
-            {/* Categoria (Novo Campo) */}
+            {/* Categoria */}
             <div className="md:col-span-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Função / Status</label>
               <select 
@@ -146,12 +188,26 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Dados Principais</h3>
             </div>
 
+            <div className="md:col-span-4">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                {formData.tipo === 'PF' ? 'CPF' : 'CNPJ'} <span className="text-red-500">*</span>
+                {loadingCnpj && <span className="text-xs text-blue-600 flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Buscando...</span>}
+              </label>
+              <input
+                type="text" name="cpf_cnpj" value={formData.cpf_cnpj} 
+                onChange={handleChange} 
+                onBlur={checkCNPJ} // Dispara a busca ao sair do campo
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000]"
+                placeholder={formData.tipo === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
+              />
+            </div>
+
             <div className="md:col-span-8">
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo / Razão Social <span className="text-red-500">*</span></label>
               <input
                 type="text" name="nome" required value={formData.nome} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000]"
-                placeholder="Ex: João da Silva"
+                placeholder={formData.tipo === 'PF' ? 'Ex: João da Silva' : 'Nome da Empresa LTDA'}
               />
             </div>
 
@@ -160,17 +216,6 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
               <input
                   type="date" name="data_cadastro" value={formData.data_cadastro} onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000]"
-              />
-            </div>
-
-            <div className="md:col-span-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {formData.tipo === 'PF' ? 'CPF' : 'CNPJ'} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text" name="cpf_cnpj" value={formData.cpf_cnpj} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000]"
-                placeholder={formData.tipo === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
               />
             </div>
 
@@ -259,7 +304,7 @@ const ClientModal = ({ isOpen, onClose, onSave, initialData }) => {
                         const val = e.target.value.toUpperCase().slice(0, 2);
                         setFormData(prev => ({ ...prev, estado: val }));
                     }}
-                    maxLength={2} // Limite visual
+                    maxLength={2} 
                     className="w-full px-4 py-2 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D80000] text-center font-bold"
                 />
             </div>

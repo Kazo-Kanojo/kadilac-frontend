@@ -1,7 +1,107 @@
 import { useState, useEffect } from 'react';
-import { Search, UserPlus, Edit, Briefcase, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail, MessageCircle } from 'lucide-react';
+import { Search, UserPlus, Edit, Briefcase, User, Phone, MapPin, History, Car, ChevronDown, Calendar, Mail, MessageCircle, Send, X, MessageSquare } from 'lucide-react';
 import ClientModal from './ClientModal';
 import api from '../api'; 
+
+// --- NOVO COMPONENTE: MODAL DE MENSAGENS DO WHATSAPP ---
+const WhatsAppModal = ({ isOpen, onClose, client }) => {
+    const [text, setText] = useState('');
+
+    useEffect(() => {
+        if (isOpen) setText(''); // Limpa o texto ao abrir
+    }, [isOpen]);
+
+    if (!isOpen || !client) return null;
+
+    // Modelos de mensagens prontos
+    const templates = [
+        {
+            id: 1,
+            label: 'Boas-vindas',
+            content: `Olá ${client.nome}, tudo bem? Aqui é da Kadilac Veículos.\n\nComo posso ajudar você hoje na busca do seu novo carro?`
+        },
+        {
+            id: 2,
+            label: 'Proposta / Simulação',
+            content: `Olá ${client.nome}, tudo bem?\n\nConforme conversamos, segue a proposta/simulação do veículo. Qualquer dúvida, estou à disposição para fecharmos negócio!`
+        },
+        {
+            id: 3,
+            label: 'Pós-Venda',
+            content: `Olá ${client.nome}! Parabéns pela aquisição.\n\nEstou passando apenas para saber se está tudo bem com o veículo e me colocar à disposição para o que precisar.`
+        }
+    ];
+
+    const handleSend = () => {
+        if (!text.trim()) return alert('Digite uma mensagem antes de enviar.');
+        if (!client.telefone) return alert('Este cliente não tem telefone cadastrado.');
+
+        const cleanPhone = client.telefone.replace(/\D/g, '');
+        // Adiciona o 55 do Brasil se o número tiver 11 ou 10 dígitos
+        const finalPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+        
+        // Codifica o texto para formato de URL (preservando quebras de linha)
+        const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+                <div className="bg-[#25D366] text-white px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            <MessageCircle size={20} /> Enviar Mensagem
+                        </h2>
+                        <p className="text-sm text-green-100 mt-0.5">Para: {client.nome}</p>
+                    </div>
+                    <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-full transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="p-6 bg-gray-50 flex flex-col gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Mensagens Rápidas (Modelos)</label>
+                        <div className="flex flex-wrap gap-2">
+                            {templates.map(tpl => (
+                                <button 
+                                    key={tpl.id}
+                                    onClick={() => setText(tpl.content)}
+                                    className="bg-white border border-gray-300 text-gray-700 hover:border-green-500 hover:text-green-600 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm"
+                                >
+                                    {tpl.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Sua Mensagem</label>
+                        <textarea 
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            placeholder="Escreva sua mensagem aqui ou escolha um modelo acima..."
+                            className="w-full h-40 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#25D366] outline-none text-sm resize-none shadow-inner bg-white"
+                        />
+                    </div>
+                </div>
+
+                <div className="bg-white border-t px-6 py-4 flex justify-end gap-3">
+                    <button onClick={onClose} className="px-5 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+                    <button 
+                        onClick={handleSend}
+                        className="px-6 py-2 bg-[#25D366] text-white font-bold rounded-lg hover:bg-green-600 transition-all flex items-center gap-2 shadow-md shadow-green-200"
+                    >
+                        <Send size={16}/> Enviar via WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+// --------------------------------------------------------------
 
 const Clientes = () => {
   // --- ESTADOS ---
@@ -15,9 +115,10 @@ const Clientes = () => {
   const [selectedClient, setSelectedClient] = useState(null); 
   const [activeTab, setActiveTab] = useState('dados'); 
 
-  // Estados do Modal
+  // Estados dos Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); 
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false); // <-- NOVO ESTADO
 
   // --- CARREGAMENTO INICIAL ---
   const fetchClients = async () => {
@@ -44,26 +145,9 @@ const Clientes = () => {
     if (selectedClient && activeTab === 'historico') {
         const fetchHistory = async () => {
             try {
-                const res = await api.get(`/clientes/${selectedClient.id}/vendas`); // Ajuste se sua rota for diferente
-                // Se não tiver rota específica de 'vendas do cliente', use um filtro no front ou crie a rota no back
-                // Supondo que a rota /financeiro/vendas ou similar possa filtrar, ou a rota criada anteriormente
-                // Caso a rota '/clientes/:id/vendas' não exista no seu backend atual, 
-                // você precisará filtrar as vendas gerais ou criar o endpoint.
-                // Vou assumir que o endpoint existe ou que o filtro é feito aqui.
-                // Se der erro 404, avise que ajustamos o backend.
-                
-                // BACKEND CHECK: No seu server.js enviado, não vi rota GET /clientes/:id/vendas explícita.
-                // Mas vi GET /financeiro/vendas. 
-                // VOU AJUSTAR PARA FILTRAR NO FRONTEND SE A ROTA NÃO EXISTIR, OU VOCÊ ADICIONA NO BACK.
-                // Para garantir, vou tentar buscar as vendas e filtrar (solução temporária segura)
-                // OU melhor: assumir que você vai usar a lógica já existente no seu código original 
-                // (que parecia já ter essa intenção no useEffect).
-                
-                // Nota: No seu código original enviado, havia: api.get(`/clientes/${selectedClient.id}/vendas`)
-                // Se isso funcionava, manterei. Se não, avise para criarmos a rota.
+                const res = await api.get(`/clientes/${selectedClient.id}/vendas`);
                 setClientHistory(res.data);
             } catch (error) {
-                // Fallback: Se a rota específica falhar, tenta pegar todas e filtrar (opcional)
                 console.error("Erro ao buscar histórico", error);
                 setClientHistory([]); 
             }
@@ -103,10 +187,9 @@ const Clientes = () => {
     setIsModalOpen(true);
   };
 
-  // BOTÃO NOVO: VER NEGÓCIOS
   const handleShowDeals = () => {
     if (!selectedClient) return;
-    setActiveTab('historico'); // Apenas troca a aba para o histórico
+    setActiveTab('historico');
   };
 
   const handleSaveClient = async (clientData) => {
@@ -128,8 +211,8 @@ const Clientes = () => {
     }
   };
 
-  // --- FUNÇÃO WHATSAPP ---
-  const openWhatsApp = (phone) => {
+  // --- FUNÇÃO ABERTURA DIRETA WHATSAPP (Usada na tabela) ---
+  const openWhatsAppDirect = (phone) => {
     if (!phone) return;
     const cleanPhone = phone.replace(/\D/g, '');
     const finalPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
@@ -147,7 +230,6 @@ const Clientes = () => {
       {/* BARRA DE FERRAMENTAS */}
       <div className="bg-white p-2 rounded-t-lg shadow-sm border-b border-gray-200 flex flex-wrap gap-2 items-center mb-2">
         
-        {/* Botão Novo */}
         <button 
             onClick={handleNewClient}
             className="flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all group min-w-[80px]"
@@ -158,7 +240,6 @@ const Clientes = () => {
 
         <div className="hidden md:block w-px h-10 bg-gray-300 mx-1"></div>
 
-        {/* Botão Editar */}
         <button 
             onClick={handleEditClient} 
             disabled={!selectedClient}
@@ -168,20 +249,17 @@ const Clientes = () => {
             <span className="text-xs font-bold text-gray-600">Editar</span>
         </button>
 
-        {/* Botão NEGÓCIOS (Substitui o Excluir) */}
         <button 
             onClick={handleShowDeals} 
             disabled={!selectedClient}
             className={`flex-1 md:flex-none flex flex-col items-center justify-center px-4 py-2 rounded border border-transparent transition-all group min-w-[80px] ${!selectedClient ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 hover:border-gray-200'}`}
         >
-            {/* Ícone de Maleta/Business */}
             <Briefcase size={24} className="text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-bold text-gray-600">Negócios</span>
         </button>
 
         <div className="w-full md:flex-1"></div>
 
-        {/* Busca */}
         <div className="relative w-full md:w-64 mt-2 md:mt-0">
           <input
             type="text"
@@ -219,7 +297,6 @@ const Clientes = () => {
                         onClick={() => handleSelectClient(client)}
                         className={`cursor-pointer transition-colors ${selectedClient?.id === client.id ? 'bg-blue-100 text-blue-900 font-medium' : 'hover:bg-blue-50 text-gray-700'}`}
                     >
-                        {/* NOME + STATUS BADGE */}
                         <td className="p-3">
                             <div className="font-bold text-gray-800">{client.nome}</div>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wide 
@@ -236,10 +313,10 @@ const Clientes = () => {
                                 <button 
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        openWhatsApp(client.telefone);
+                                        openWhatsAppDirect(client.telefone);
                                     }}
-                                    className="p-1 bg-green-100 text-green-600 rounded-full hover:bg-green-500 hover:text-white transition-colors"
-                                    title="Chamar no WhatsApp"
+                                    className="p-1.5 bg-[#25D366]/10 text-[#25D366] rounded-full hover:bg-[#25D366] hover:text-white transition-colors"
+                                    title="Abrir WhatsApp Direto"
                                 >
                                     <MessageCircle size={14} />
                                 </button>
@@ -258,7 +335,6 @@ const Clientes = () => {
       {/* PAINEL INFERIOR (DETALHES) */}
       {selectedClient && (
         <div className="bg-white h-auto md:h-80 flex flex-col border-t-4 border-blue-500 animate-slide-up shadow-inner mt-2 z-20">
-            {/* Abas */}
             <div className="flex border-b bg-gray-100 overflow-x-auto">
                 <button 
                     onClick={() => setActiveTab('dados')}
@@ -277,10 +353,8 @@ const Clientes = () => {
                 </div>
             </div>
 
-            {/* Conteúdo do Painel */}
             <div className="p-4 overflow-auto flex-1 bg-white max-h-[40vh] md:max-h-none">
                 
-                {/* ABA DADOS PESSOAIS */}
                 {activeTab === 'dados' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
                         <div className="space-y-3">
@@ -288,34 +362,30 @@ const Clientes = () => {
                                 <User size={16}/> Identificação
                             </div>
                             <p><span className="text-gray-500 w-24 inline-block">Nome:</span> <strong className="text-lg">{selectedClient.nome}</strong></p>
-                            
-                            {/* STATUS NO DETALHE */}
                             <p><span className="text-gray-500 w-24 inline-block">Função:</span> <span className="font-bold text-[#D80000] uppercase">{selectedClient.categoria || 'Cliente'}</span></p>
-
                             <p><span className="text-gray-500 w-24 inline-block">CPF/CNPJ:</span> {selectedClient.cpf_cnpj}</p>
                             <p><span className="text-gray-500 w-24 inline-block">RG:</span> {selectedClient.rg || '-'}</p>
                             <p><span className="text-gray-500 w-24 inline-block">Nascimento:</span> {formatDate(selectedClient.data_nascimento)}</p>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-gray-500 font-bold border-b pb-1">
+                        <div className="space-y-3 flex flex-col items-start">
+                            <div className="flex items-center gap-2 text-gray-500 font-bold border-b pb-1 w-full">
                                 <Phone size={16}/> Contato
                             </div>
                             
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500 w-24 inline-block">Telefone:</span> 
-                                <span className="font-medium">{selectedClient.telefone}</span>
-                                {selectedClient.telefone && (
-                                    <button 
-                                        onClick={() => openWhatsApp(selectedClient.telefone)}
-                                        className="flex items-center gap-1 bg-green-500 text-white px-2 py-0.5 rounded text-xs font-bold hover:bg-green-600 transition-colors shadow-sm ml-2"
-                                    >
-                                        <MessageCircle size={12} fill="currentColor" /> Chamar
-                                    </button>
-                                )}
-                            </div>
+                            <p><span className="text-gray-500 w-24 inline-block">Telefone:</span> <span className="font-medium">{selectedClient.telefone}</span></p>
+                            
+                            {/* BOTAO PARA ABRIR O MODAL DE MENSAGENS */}
+                            {selectedClient.telefone && (
+                                <button 
+                                    onClick={() => setIsMessageModalOpen(true)}
+                                    className="flex items-center justify-center gap-2 bg-[#25D366] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition-colors shadow-sm mt-1 w-full max-w-[200px]"
+                                >
+                                    <MessageSquare size={16} fill="currentColor" /> Enviar Mensagem
+                                </button>
+                            )}
 
-                            <p className="flex items-center gap-1">
+                            <p className="flex items-center gap-1 mt-2">
                                 <span className="text-gray-500 w-24 inline-block">Email:</span> 
                                 {selectedClient.email ? (
                                     <a href={`mailto:${selectedClient.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
@@ -337,7 +407,6 @@ const Clientes = () => {
                     </div>
                 )}
 
-                {/* ABA HISTÓRICO / NEGÓCIOS */}
                 {activeTab === 'historico' && (
                     <div className="h-full">
                         {clientHistory.length === 0 ? (
@@ -393,6 +462,13 @@ const Clientes = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveClient}
         initialData={modalMode === 'edit' ? selectedClient : null}
+      />
+
+      {/* NOVO: MODAL DO WHATSAPP */}
+      <WhatsAppModal 
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        client={selectedClient}
       />
     </div>
   );
