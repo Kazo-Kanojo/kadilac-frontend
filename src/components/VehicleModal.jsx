@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Save, Upload, Plus, Search, Tag, User, Check, RefreshCw, Car, Briefcase } from 'lucide-react';
 import api from '../api';
 import ClientModal from './ClientModal';
-import ConsultaFipeModal from './ConsultaFipeModal'; // <-- IMPORTANDO O SEU MODAL FIPE
+import ConsultaFipeModal from './ConsultaFipeModal'; 
+import imageCompression from 'browser-image-compression';
 
 // --- COMPONENTE DE BUSCA SIMPLES ---
 const SimpleSearch = ({ label, placeholder, value, onSelect, type, dataList }) => {
@@ -149,16 +150,40 @@ const VehicleModal = ({ vehicle, onClose, onSuccess, clients, vehiclesList }) =>
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) return alert("A imagem é demasiado grande (Max 5MB)");
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFotoPreview(reader.result);
-        setFormData(prev => ({ ...prev, foto: reader.result }));
+      // 1. Opções de compressão: Reduz a imagem para no máximo 500KB e 1280px de largura/altura
+      const options = {
+        maxSizeMB: 0.5, 
+        maxWidthOrHeight: 1280, 
+        useWebWorker: true,
+        fileType: 'image/jpeg' // Converte para JPG, que é mais leve
       };
-      reader.readAsDataURL(file);
+
+      try {
+        setLoading(true); // Opcional: mostra que está a carregar enquanto comprime
+
+        // 2. Comprime o ficheiro original
+        const compressedFile = await imageCompression(file, options);
+        
+        console.log(`Tamanho original: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`Tamanho comprimido: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+
+        // 3. Converte a imagem comprimida para Base64 para enviar à API
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFotoPreview(reader.result);
+          setFormData(prev => ({ ...prev, foto: reader.result }));
+        };
+        reader.readAsDataURL(compressedFile);
+
+      } catch (error) {
+        console.error("Erro ao comprimir imagem:", error);
+        alert("Ocorreu um erro ao processar a imagem. Tente uma foto diferente.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
