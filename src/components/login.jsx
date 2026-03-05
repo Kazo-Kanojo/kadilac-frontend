@@ -61,7 +61,6 @@ const Login = ({ onLogin }) => {
             K
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Acesso ao Sistema</h1>
-          <p className="text-gray-500 text-sm mt-1">Gestão Kadilac Veículos</p>
         </div>
 
         {/* Mensagem de Erro */}
@@ -128,7 +127,7 @@ const Login = ({ onLogin }) => {
         </form>
         
         <div className="mt-6 text-center text-xs text-gray-400">
-            &copy; {new Date().getFullYear()} Kadilac System. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} ati sistemas Todos os direitos reservados.
         </div>
       </div>
     </div>
